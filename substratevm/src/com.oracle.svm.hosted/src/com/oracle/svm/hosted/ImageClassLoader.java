@@ -446,4 +446,8 @@ public final class ImageClassLoader {
     public boolean noEntryForURI(EconomicSet<String> set) {
         return classLoaderSupport.noEntryForURI(set);
     }
+
+    public EconomicSet<Class<?>> getApplicationClasses() {
+        return applicationClasses;
+    }
 }
