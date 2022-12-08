@@ -45,6 +45,7 @@ import java.util.TimerTask;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.prophet.ProphetPlugin;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -408,35 +409,36 @@ public class NativeImageGeneratorRunner {
                     imageKind = NativeImageKind.EXECUTABLE;
                 }
 
-                String className = SubstrateOptions.Class.getValue(parsedHostedOptions);
-                String moduleName = SubstrateOptions.Module.getValue(parsedHostedOptions);
-                if (imageKind.isExecutable && moduleName.isEmpty() && className.isEmpty()) {
-                    throw UserError.abort("Must specify main entry point class when building %s native image. Use '%s'.", imageKind,
-                                    SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
-                }
+                if (!ProphetPlugin.Options.ProphetPlugin.getValue(parsedHostedOptions)) {
 
-                reporter.printStart(imageName, imageKind);
+                    String className = SubstrateOptions.Class.getValue(parsedHostedOptions);
+                    String moduleName = SubstrateOptions.Module.getValue(parsedHostedOptions);
+                    if (imageKind.isExecutable && moduleName.isEmpty() && className.isEmpty()) {
+                        throw UserError.abort("Must specify main entry point class when building %s native image. Use '%s'.", imageKind,
+                                        SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
+                    }
 
-                if (!className.isEmpty() || !moduleName.isEmpty()) {
-                    Method mainEntryPoint;
-                    Class<?> mainClass;
-                    try {
-                        Module mainModule = null;
-                        if (!moduleName.isEmpty()) {
-                            mainModule = classLoader.findModule(moduleName)
-                                            .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));
-                        }
-                        if (className.isEmpty()) {
-                            className = classLoader.getMainClassFromModule(mainModule)
-                                            .orElseThrow(() -> UserError.abort("Module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
-                        }
-                        mainClass = classLoader.forName(className, mainModule);
-                        if (mainClass == null) {
-                            throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
-                        }
-                    } catch (ClassNotFoundException ex) {
-                        throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
-                    } catch (UnsupportedClassVersionError ex) {
+                    reporter.printStart(imageName, imageKind);
+
+                    if (!className.isEmpty() || !moduleName.isEmpty()) {
+                        Method mainEntryPoint;
+                        Class<?> mainClass;
+                        try {
+                            Module mainModule = null;
+                            if (!moduleName.isEmpty()) {
+                                mainModule = classLoader.findModule(moduleName)
+                                                .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));
+                            }
+                            if (className.isEmpty()) {
+                                className = classLoader.getMainClassFromModule(mainModule)
+                                                .orElseThrow(() -> UserError.abort("Module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
+                            }
+                            mainClass = classLoader.forName(className, mainModule);
+                            if (mainClass == null) {
+                                throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
+                            }
+                        } catch (ClassNotFoundException ex) {
+                            throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));} catch (UnsupportedClassVersionError ex) {
                         if (ex.getMessage().contains("compiled by a more recent version of the Java Runtime")) {
                             throw UserError.abort("Unable to load '%s' due to a Java version mismatch.%n" +
                                             "Please take one of the following actions:%n" +
@@ -447,24 +449,26 @@ public class NativeImageGeneratorRunner {
                         } else {
                             throw UserError.abort(ex.getMessage());
                         }
-                    }
-                    String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
-                    if (mainEntryPointName.isEmpty()) {
-                        throw UserError.abort("Must specify main entry point method when building %s native image. Use '%s'.", imageKind,
-                                        SubstrateOptionsParser.commandArgument(SubstrateOptions.Method, "<method-name>"));
-                    }
-                    try {
-                        /*
-                         * First look for an main method with the C-level signature for arguments.
-                         */
-                        mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
-                    } catch (NoSuchMethodException ignored2) {
-                        Method javaMainMethod;
-                        /*
-                         * If no C-level main method was found, look for a Java-level main method
-                         * and use our wrapper to invoke it.
-                         */
-                        if ("main".equals(mainEntryPointName) && JavaMainWrapper.instanceMainMethodSupported()) {
+                        }
+                        String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
+                        if (mainEntryPointName.isEmpty()) {
+                            throw UserError.abort("Must specify main entry point method when building %s native image. Use '%s'.", imageKind,
+                                            SubstrateOptionsParser.commandArgument(SubstrateOptions.Method, "<method-name>"));
+                        }
+                        try {
+                            /*
+                             * First look for an main method with the C-level signature for
+                             * arguments.
+                             */
+                            mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
+                        } catch (NoSuchMethodException ignored2) {
+                            Method javaMainMethod;
+
+                                /*
+                                 * If no C-level main method was found, look for a Java-level mainmethod
+                                 *  and use our wrapper to invoke it.
+                                 */
+                                if ("main".equals(mainEntryPointName) && JavaMainWrapper.instanceMainMethodSupported()) {
                             // Instance main method only supported for "main" method name
                             try {
                                 /*
@@ -478,8 +482,7 @@ public class NativeImageGeneratorRunner {
                                 Method findMainMethod = ReflectionUtil.lookupMethod(mainMethodFinder, "findMainMethod", Class.class);
                                 javaMainMethod = (Method) findMainMethod.invoke(null, mainClass);
                             } catch (InvocationTargetException ex) {
-                                assert ex.getTargetException() instanceof NoSuchMethodException;
-                                throw UserError.abort(ex.getCause(),
+                                assert ex.getTargetException() instanceof NoSuchMethodException;throw UserError.abort(ex.getCause(),
                                                 "Method '%s.%s' is declared as the main entry point but it can not be found. " +
                                                                 "Make sure that class '%s' is on the classpath and that non-private " +
                                                                 "method '%s()' or '%s(String[])'.",
@@ -487,18 +490,17 @@ public class NativeImageGeneratorRunner {
                                                 mainEntryPointName,
                                                 mainClass.getName(),
                                                 mainEntryPointName,
-                                                mainEntryPointName);
+                            mainEntryPointName);
                             }
-                        } else {
-                            try {
+                            } else {
+                                try {
                                 javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
-                                final int mainMethodModifiers = javaMainMethod.getModifiers();
-                                if (!Modifier.isStatic(mainMethodModifiers)) {
-                                    throw UserError.abort("Java main method '%s.%s(String[])' is not static.", mainClass.getName(), mainEntryPointName);
-                                }
-                                if (!Modifier.isPublic(mainMethodModifiers)) {
-                                    throw UserError.abort("Java main method '%s.%s(String[])' is not public.", mainClass.getName(), mainEntryPointName);
-                                }
+                            final int mainMethodModifiers = javaMainMethod.getModifiers();
+                            if (!Modifier.isStatic(mainMethodModifiers)) {
+                                throw UserError.abort("Java main method '%s.%s(String[])' is not static.", mainClass.getName(), mainEntryPointName);
+                            }
+                            if (!Modifier.isPublic(mainMethodModifiers)) {
+                                throw UserError.abort("Java main method '%s.%s(String[])' is not public.", mainClass.getName(), mainEntryPointName);}
                             } catch (ReflectionUtilError ex) {
                                 throw UserError.abort(ex.getCause(),
                                                 "Method '%s.%s' is declared as the main entry point but it can not be found. " +
@@ -513,15 +515,22 @@ public class NativeImageGeneratorRunner {
                         if (javaMainMethod.getReturnType() != void.class) {
                             throw UserError.abort("Java main method '%s.%s(%s)' does not have the return type 'void'.", mainClass.getName(), mainEntryPointName,
                                             javaMainMethod.getParameterCount() == 1 ? "String[]" : "");
+                            }
+                            javaMainSupport = createJavaMainSupport(javaMainMethod, classLoader);
+                            mainEntryPoint = getMainEntryMethod(classLoader);
                         }
-                        javaMainSupport = createJavaMainSupport(javaMainMethod, classLoader);
-                        mainEntryPoint = getMainEntryMethod(classLoader);
-                    }
-                    verifyMainEntryPoint(mainEntryPoint);
+                        verifyMainEntryPoint(mainEntryPoint);
 
-                    mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
+                        mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
+                    }
+
+                } else {
+                    reporter.printStart(imageName, imageKind);
                 }
 
+                int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
+                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
+                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
                 generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
                 generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY, optionParser.getRuntimeOptionNames(), timerCollection);
                 wasSuccessfulBuild = true;
@@ -716,6 +725,7 @@ public class NativeImageGeneratorRunner {
         }
 
         public static void setModuleAccesses() {
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "com.oracle.svm.hosted.prophet");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.word");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.nativeimage");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.collections");
