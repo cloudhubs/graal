@@ -39,3 +39,8 @@
 * Design a more general approach for the annotation extraction.
   * Try to think of an approach that would generalize to other Spring Entities (and then, as a next step, to other java frameworks) without too much extra code.
   * Do not depend on concrete annotations in the code.
+
+
+## Other tasks
+- [ ] create tests
+- [ ] setup continuous integration on at least some of the repositories
