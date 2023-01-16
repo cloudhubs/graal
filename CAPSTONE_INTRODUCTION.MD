@@ -18,7 +18,7 @@
   * https://github.com/d-kozak/graal
   * branch prophet-plugin-master 
     * should be the default
-* [Developing native image](https://github.com/d-kozak/graal/blob/prophet-plugin-master/docs/reference-manual/native-image/contribute/DevelopingNativeImage.md)
+* [Developing native image](https://github.com/cloudhubs/graal/blob/prophet-plugin-master/CAPSTONE_INTRODUCTION.MD)
 * [mx](https://github.com/graalvm/mx)
   * The build tool used to build GraalVM projects.
 * Ideal Graph Visualizer (IGV)
@@ -33,7 +33,7 @@
   * open the project in an IDE using mx intelijinit
   * build native image of helloworld
   * view the graph of the main method in IGV
-* Look at the source code of the [prophet plugin](https://github.com/d-kozak/graal/tree/prophet-plugin-master/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/prophet)
+* Look at the source code of the [prophet plugin](https://github.com/cloudhubs/graal/tree/prophet-plugin-master/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/prophet)
 
 ## Extra
 * Design a more general approach for the annotation extraction.
