@@ -26,21 +26,28 @@
   * [More info](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/)
 
 ## Initial tasks
-* Setup a working environment
+### Shared
+- [ ] Setup a working environment
   * clone [mx](https://github.com/graalvm/mx)
   * add it to PATH
-  * clone graal-prophet https://github.com/d-kozak/graal
+  * clone graal-prophet https://github.com/cloudhubs/graal
   * open the project in an IDE using mx intelijinit
   * build native image of helloworld
   * view the graph of the main method in IGV
-* Look at the source code of the [prophet plugin](https://github.com/cloudhubs/graal/tree/prophet-plugin-master/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/prophet)
-
-## Extra
-* Design a more general approach for the annotation extraction.
-  * Try to think of an approach that would generalize to other Spring Entities (and then, as a next step, to other java frameworks) without too much extra code.
+  * build native image of helloworld using mx helloworld or write your own program
+- [ ] Look at the source code of the [prophet plugin](https://github.com/cloudhubs/graal/tree/prophet-plugin-master/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/prophet)
+- [ ] Look at the source code of [prophet-utils](https://github.com/cloudhubs/prophet-utils)
+- 
+### Divide & Conquer
+- [ ] Design a more general approach for the annotation extraction.
+  * Try to think of an approach that would generalize to other Spring Entities (and then, as the next step, to other java frameworks) without too much extra code.
   * Do not depend on concrete annotations in the code.
-
-
-## Other tasks
-- [ ] create tests
-- [ ] setup continuous integration on at least some of the repositories
+- [ ] Bounded context comparison
+  * Write a program to compare two bounded contexts and report differences.
+- [ ] Prophet-utils - graal-prophet interface
+  * Design a proper (and ideally simple) interface between the prophet plugin in graal and the rest of the system
+- [ ] Refactoring, cleanup bug fixes
+  * Everything is Work in Progress, so you might encounter some silly code.  
+- [ ] Testing
+  * Tests
+  * continuous integration

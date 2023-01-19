@@ -44,7 +44,7 @@ public class ProphetPlugin {
     private final String basePackage;
     private final List<Class<?>> allClasses;
 
-    private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle");
+    private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle", "jdk.vm");
 
     public ProphetPlugin(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb, String basePackage, String modulename, Boolean extractRestCalls) {
         this.loader = loader;
