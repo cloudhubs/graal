@@ -15,10 +15,10 @@
 
 ## Useful links
 * Graal-prophet git repository
-  * https://github.com/d-kozak/graal
+  * https://github.com/cloudhubs/graal
   * branch prophet-plugin-master 
     * should be the default
-* [Developing native image](https://github.com/cloudhubs/graal/blob/prophet-plugin-master/CAPSTONE_INTRODUCTION.MD)
+* [Developing native image](https://github.com/cloudhubs/graal/blob/prophet-plugin-master/docs/reference-manual/native-image/contribute/DevelopingNativeImage.md)
 * [mx](https://github.com/graalvm/mx)
   * The build tool used to build GraalVM projects.
 * Ideal Graph Visualizer (IGV)
