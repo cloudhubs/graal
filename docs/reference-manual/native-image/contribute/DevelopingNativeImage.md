@@ -27,7 +27,9 @@ mx build
 
 echo "public class HelloWorld { public static void main(String[] args) { System.out.println(\"Hello World\"); } }" > HelloWorld.java
 $JAVA_HOME/bin/javac HelloWorld.java
-mx native-image HelloWorld
+
+GRAAL_HOME=$(mx graalvm-home)
+$GRAAL_HOME/bin/native-image HelloWorld
 ./helloworld
 ```
 
