@@ -19,6 +19,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.options.Option;
 
 import java.io.FileWriter;
@@ -136,7 +137,28 @@ public class ProphetPlugin {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
+                if (!method.getQualifiedName().contains("EmsService.getExams")) {
+                    continue;
+                }
                 try {
+
+                    /*
+                     * General idea:
+                     * 1) find rest invoke
+                     * 2) check the first argument - ip address
+                     * 3) if a string - done
+                     *  if not a string - then it should be an stringbuilder.toString invoke
+                     *  4) find the receiver of the toString invocation
+                     *  5) filter all its usages to find the .append calls
+                     *  6) find the arguments to the append calls
+                     *  7) try to extract the string constant for each
+                     *       should be either
+                     *         a) direct string/char
+                     *         b) param passed into the method  (for configurable uris like /productis/{id}/smth)
+                     *         c) loadfield
+                     *              if a loadfield, try to extract its  @Value annottion and load the value from config file
+                     */
+
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
                         if (node instanceof Invoke) {
@@ -158,6 +180,17 @@ public class ProphetPlugin {
                                     for (ValueNode argument : callTarget.arguments()) {
                                         System.out.println("\t" + argument);
                                     }
+                                    // todo assert it is really a toString invocation
+                                    AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
+                                    System.out.println("ToString receiver: " + toStringReceiver);
+                                    for (Node usage : toStringReceiver.usages()) {
+                                        System.out.println("\t usage : " + usage);
+                                        if (usage instanceof CallTargetNode) {
+                                            CallTargetNode usageAsCallTarget = (CallTargetNode) usage;
+                                            System.out.println("\t\t is a calltarget to " + usageAsCallTarget.targetMethod());
+                                        }
+                                    }
+
                                 }
                                 System.out.println(zero + " " + one);
                                 System.out.println("===");
