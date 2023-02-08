@@ -25,7 +25,10 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+<<<<<<< HEAD
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+=======
+>>>>>>> 17210551b67 (extracting method call, wip)
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.options.Option;
 
@@ -311,11 +314,15 @@ public class ProphetPlugin {
                                     // todo assert it is really a toString invocation
                                     AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
                                     System.out.println("ToString receiver: " + toStringReceiver);
+<<<<<<< HEAD
                                     StringBuilder stringBuilder = new StringBuilder();
+=======
+>>>>>>> 17210551b67 (extracting method call, wip)
                                     for (Node usage : toStringReceiver.usages()) {
                                         System.out.println("\t usage : " + usage);
                                         if (usage instanceof CallTargetNode) {
                                             CallTargetNode usageAsCallTarget = (CallTargetNode) usage;
+<<<<<<< HEAD
                                             AnalysisMethod m = ((AnalysisMethod) usageAsCallTarget.targetMethod());
                                             if (m.getQualifiedName().startsWith("java.lang.AbstractStringBuilder.append")) {
                                                 System.out.println("\t\t is a calltarget to " + m);
@@ -343,6 +350,12 @@ public class ProphetPlugin {
                                         }
                                     }
                                     System.out.println("Concatenated url: " + stringBuilder.toString());
+=======
+                                            System.out.println("\t\t is a calltarget to " + usageAsCallTarget.targetMethod());
+                                        }
+                                    }
+
+>>>>>>> 17210551b67 (extracting method call, wip)
                                 }
                                 System.out.println(zero + " " + one);
                                 System.out.println("===");
