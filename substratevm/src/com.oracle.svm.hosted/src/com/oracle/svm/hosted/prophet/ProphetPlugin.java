@@ -26,6 +26,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 =======
 >>>>>>> 17210551b67 (extracting method call, wip)
@@ -42,6 +43,14 @@ import java.lang.reflect.Method;
 import java.lang.annotation.Annotation;
 
 >>>>>>> 08b908392b7 (parsed service classes with methods and fields)
+=======
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.options.Option;
+
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+>>>>>>> 61bbe2e8cc0 (first url extracted)
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -315,14 +324,21 @@ public class ProphetPlugin {
                                     AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
                                     System.out.println("ToString receiver: " + toStringReceiver);
 <<<<<<< HEAD
+<<<<<<< HEAD
                                     StringBuilder stringBuilder = new StringBuilder();
 =======
 >>>>>>> 17210551b67 (extracting method call, wip)
+=======
+                                    StringBuilder stringBuilder = new StringBuilder();
+>>>>>>> 61bbe2e8cc0 (first url extracted)
                                     for (Node usage : toStringReceiver.usages()) {
                                         System.out.println("\t usage : " + usage);
                                         if (usage instanceof CallTargetNode) {
                                             CallTargetNode usageAsCallTarget = (CallTargetNode) usage;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 61bbe2e8cc0 (first url extracted)
                                             AnalysisMethod m = ((AnalysisMethod) usageAsCallTarget.targetMethod());
                                             if (m.getQualifiedName().startsWith("java.lang.AbstractStringBuilder.append")) {
                                                 System.out.println("\t\t is a calltarget to " + m);
@@ -347,6 +363,7 @@ public class ProphetPlugin {
                                                     }
                                                 }
                                             }
+<<<<<<< HEAD
                                         }
                                     }
                                     System.out.println("Concatenated url: " + stringBuilder.toString());
@@ -356,6 +373,11 @@ public class ProphetPlugin {
                                     }
 
 >>>>>>> 17210551b67 (extracting method call, wip)
+=======
+                                        }
+                                    }
+                                    System.out.println("Concatenated url: " + stringBuilder.toString());
+>>>>>>> 61bbe2e8cc0 (first url extracted)
                                 }
                                 System.out.println(zero + " " + one);
                                 System.out.println("===");
