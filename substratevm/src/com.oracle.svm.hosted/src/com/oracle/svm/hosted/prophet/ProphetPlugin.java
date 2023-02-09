@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.prophet;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -19,18 +20,24 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.options.Option;
 
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 // todo move to a separate module for a faster compilation ?
@@ -46,6 +53,8 @@ public class ProphetPlugin {
     private final List<Class<?>> allClasses;
 
     private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle", "jdk.vm");
+
+    private Map<String, Object> propMap;
 
     public ProphetPlugin(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb, String basePackage, String modulename, Boolean extractRestCalls) {
         this.loader = loader;
@@ -113,6 +122,13 @@ public class ProphetPlugin {
     }
 
     private Module doRun() {
+        URL enumeration = loader.getClassLoader().getResource("application.yml");
+        try {
+            this.propMap = new org.yaml.snakeyaml.Yaml().load(new FileReader(enumeration.getFile()));
+            System.out.println(this.propMap);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         var classes = filterRelevantClasses();
         return processClasses(classes);
     }
@@ -183,14 +199,38 @@ public class ProphetPlugin {
                                     // todo assert it is really a toString invocation
                                     AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
                                     System.out.println("ToString receiver: " + toStringReceiver);
+                                    StringBuilder stringBuilder = new StringBuilder();
                                     for (Node usage : toStringReceiver.usages()) {
                                         System.out.println("\t usage : " + usage);
                                         if (usage instanceof CallTargetNode) {
                                             CallTargetNode usageAsCallTarget = (CallTargetNode) usage;
-                                            System.out.println("\t\t is a calltarget to " + usageAsCallTarget.targetMethod());
+                                            AnalysisMethod m = ((AnalysisMethod) usageAsCallTarget.targetMethod());
+                                            if (m.getQualifiedName().startsWith("java.lang.AbstractStringBuilder.append")) {
+                                                System.out.println("\t\t is a calltarget to " + m);
+                                                ValueNode fstArg = usageAsCallTarget.arguments().get(1);
+                                                System.out.println("\t\t" + fstArg);
+                                                if (fstArg instanceof LoadFieldNode) {
+                                                    System.out.println("\t\t\tload field " + fstArg);
+                                                    LoadFieldNode loadfieldNode = (LoadFieldNode) fstArg;
+                                                    AnalysisField field = (AnalysisField) loadfieldNode.field();
+                                                    for (Annotation annotation : field.getAnnotations()) {
+                                                        if (annotation.annotationType().getName().contains("Value")) {
+                                                            System.out.println("\t\t\tLoad field with value annotation");
+                                                            Method valueMethod = annotation.annotationType().getMethod("value");
+                                                            String propTemplate = ((String) valueMethod.invoke(annotation));
+                                                            System.out.println("\t\t\textracted value: " + propTemplate);
+                                                            String res = tryResolve(propTemplate);
+                                                            System.out.println("\t\t\t\t resolved: " + res);
+                                                            if (res != null) {
+                                                                stringBuilder.append(res);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
-
+                                    System.out.println("Concatenated url: " + stringBuilder.toString());
                                 }
                                 System.out.println(zero + " " + one);
                                 System.out.println("===");
@@ -204,6 +244,26 @@ public class ProphetPlugin {
         } catch (Exception | LinkageError ex) {
             ex.printStackTrace();
         }
+    }
+
+    private String tryResolve(String expr) {
+        String mergedKey = expr.substring(2, expr.length() - 1);
+        String[] path = mergedKey.split("\\.");
+        var curr = this.propMap;
+        for (int i = 0; i < path.length; i++) {
+            String key = path[i];
+            Object value = curr.get(key);
+            if (value == null) {
+                return null;
+            }
+            if (value instanceof String && i == path.length - 1) {
+                return ((String) value);
+            }
+            if (value instanceof Map) {
+                curr = ((Map<String, Object>) value);
+            }
+        }
+        return null;
     }
 
     private void dumpAllClasses() {

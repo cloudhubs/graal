@@ -75,6 +75,10 @@ suite = {
                 "version" : "2.6.2-jaxb-1.0.6",
            },
         },
+        "JACKSON_SNAKE" : {
+            "urls":["file:///Users/dkozak/Projects/prophet/deps/snakeyaml-1.28.jar"],
+            "digest" : "sha1:7cae037c3014350c923776548e71c9feb7a69259",
+        },
         "LLVM_WRAPPER_SHADOWED": {
             "digest" : "sha512:bcb73fed249ef14e61b7be4153cede889de7aba4344884a54a84fc2d78f59a0b56b5045f390c378ffb727f454f26e48f92d2f6d4bad8a94ff05ad3949335c7f6",
             "sourceDigest" : "sha512:31796d30a17df22e6624300f360cef39ce4a8ab06605d31fa4809f16ce347ebfa94e87e2ddedaf4d6e7b7682fa3192d8561bb056d797f09b27c101a9a0d98cde",
@@ -205,7 +209,8 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.util"
+                "com.oracle.svm.util",
+                "JACKSON_SNAKE"
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
@@ -1654,10 +1659,12 @@ suite = {
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.base",
+                "requires": ["java.logging"],
                 "exports" : [
                     "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport",
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver",
+                    "org.yaml.snakeyaml                    to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder"
                 ],
             }
         },
