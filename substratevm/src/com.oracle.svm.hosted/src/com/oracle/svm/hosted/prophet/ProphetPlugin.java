@@ -170,6 +170,15 @@ public class ProphetPlugin {
         // }
         // Service class parsing
         for (Class<?> clazz : classes) {
+<<<<<<< HEAD
+=======
+            if (extractRestCalls)
+                processMethods(clazz);
+        }
+
+        // Service class parsing
+        for (Class<?> clazz : classes) {
+>>>>>>> e2cdc36b532 (Separated Service class parsing from method parsing)
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
 
