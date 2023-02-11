@@ -24,8 +24,16 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.options.Option;
 
+<<<<<<< HEAD
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+=======
+import java.lang.reflect.Method;
+//import java.lang.reflect.Field;
+
+import java.lang.annotation.Annotation;
+
+>>>>>>> 08b908392b7 (parsed service classes with methods and fields)
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -140,6 +148,11 @@ public class ProphetPlugin {
                 processMethods(clazz);
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
+
+                if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
+                    processService(clazz);
+                }
+
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
                     Entity entity = processEntity(clazz, ann);
                     entities.add(entity);
@@ -149,7 +162,32 @@ public class ProphetPlugin {
         return new Module(new Name(modulename), entities);
     }
 
+    private void processService(Class<?> clazz) {
+
+        java.lang.reflect.Field[] fields = clazz.getDeclaredFields();
+
+        System.out.println("===== Fields: " + clazz.getName() + " =====\n");
+        for (java.lang.reflect.Field f : fields) {
+            for (Annotation annots : f.getDeclaredAnnotations()) {
+                System.out.println("FIELD: " + f.getName() + " - " + annots.toString());
+            }
+        }
+        System.out.println("\n===== END Fields =====\n");
+
+        Method[] m = clazz.getMethods();
+
+        System.out.println("===== Methods: " + clazz.getName() + " =====\n");
+        for (Method meth : m) {
+            for (Annotation annots : meth.getDeclaredAnnotations()) {
+                System.out.println("METHOD: " + meth.getName() + " - " + annots.toString());
+            }
+        }
+        System.out.println("\n===== END Methods =====\n");
+
+    }
+
     private void processMethods(Class<?> clazz) {
+//        System.out.println("HELLO WERE IN DAVIDS METHOD");
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
@@ -177,10 +215,12 @@ public class ProphetPlugin {
 
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
+//                        System.out.println("NODE: " + node.toString());
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
                             if (targetMethod.getQualifiedName().startsWith("org.springframework.web.client.RestTemplate")) {
+//                                System.out.println("NODE: " + node.toString() + " " + targetMethod.getQualifiedName());
                                 System.out.println(method.getQualifiedName());
                                 System.out.println(targetMethod.getQualifiedName());
                                 CallTargetNode callTargetNode = invoke.callTarget();
