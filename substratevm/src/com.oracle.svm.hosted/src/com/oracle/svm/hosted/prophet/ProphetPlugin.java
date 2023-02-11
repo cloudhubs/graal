@@ -126,6 +126,10 @@ public class ProphetPlugin {
         for (Class<?> clazz : classes) {
             if (extractRestCalls)
                 processMethods(clazz);
+        }
+
+        // Service class parsing
+        for (Class<?> clazz : classes) {
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
 
