@@ -148,6 +148,7 @@ public class ProphetPlugin {
 
     private void processService(Class<?> clazz) {
 
+
         java.lang.reflect.Field[] fields = clazz.getDeclaredFields();
 
         System.out.println("===== Fields: " + clazz.getName() + " =====\n");
@@ -158,7 +159,7 @@ public class ProphetPlugin {
         }
         System.out.println("\n===== END Fields =====\n");
 
-        Method[] m = clazz.getMethods();
+        Method[] m = clazz.getDeclaredMethods();
 
         System.out.println("===== Methods: " + clazz.getName() + " =====\n");
         for (Method meth : m) {
