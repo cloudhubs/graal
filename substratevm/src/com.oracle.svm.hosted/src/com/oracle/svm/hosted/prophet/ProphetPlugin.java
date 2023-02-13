@@ -15,10 +15,14 @@ import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
 import com.oracle.svm.hosted.prophet.model.Service;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import com.oracle.svm.hosted.prophet.model.Component;
 import com.oracle.svm.hosted.prophet.model.Controller;
 =======
 >>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
+=======
+import com.oracle.svm.hosted.prophet.model.Controller;
+>>>>>>> 6c6014e36e4 (Added parsing for controllers)
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -261,10 +265,13 @@ public class ProphetPlugin {
         return s;
     }
     
+<<<<<<< HEAD
 //TODO- implement toString for Entity and Service and then compare with ni-system-context.json in utils
 //TODO- find where "entities: " is hardcoded. 
 //TODO- incorporate Entity fields and functions in Controller and Service
 
+=======
+>>>>>>> 6c6014e36e4 (Added parsing for controllers)
     private Set<Controller> processControllers(List<Class<?>> classes){
         Set<Controller> controllers = new HashSet<Controller>();
         for(Class<?> clazz : classes){
@@ -281,7 +288,10 @@ public class ProphetPlugin {
             if(serv){
                 Method[] methods = clazz.getMethods();
                 for (Method m : methods){
+<<<<<<< HEAD
                     System.out.println("method added!");
+=======
+>>>>>>> 6c6014e36e4 (Added parsing for controllers)
                     c.addMethod(m);
                     /*annotations = m.getDeclaredAnnotations();
                     for (Annotation ann : annotations){
@@ -297,6 +307,7 @@ public class ProphetPlugin {
                     }*/
                 }
             }
+<<<<<<< HEAD
             System.out.println("adding new Controller");
             controllers.add(c);
         }
@@ -310,6 +321,11 @@ public class ProphetPlugin {
 
         return s;
 >>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
+=======
+            controllers.add(c);
+        }
+        return controllers;
+>>>>>>> 6c6014e36e4 (Added parsing for controllers)
     }
 
     private void processMethods(Class<?> clazz) {

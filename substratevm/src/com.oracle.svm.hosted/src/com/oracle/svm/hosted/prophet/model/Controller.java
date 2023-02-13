@@ -11,6 +11,7 @@ public class Controller{
     Set<java.lang.reflect.Field> fields;
 
     Class<?> c;
+<<<<<<< HEAD
     
     @Override
     public String toString() {
@@ -25,6 +26,8 @@ public class Controller{
 
         return builder.toString();
     }
+=======
+>>>>>>> 6c6014e36e4 (Added parsing for controllers)
 
     public Controller(){
         methods = new HashSet<Method>();
