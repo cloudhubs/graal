@@ -122,10 +122,10 @@ public class Field {
 
     @Override
     public String toString() {
-        return "Field{" +
+        return "Field{\n" +
                         "name='" + name.getName() + '\'' +
-                        ", type='" + type + '\'' +
-                        ", isReference=" + isReference +
+                        ",\ntype='" + type + '\'' +
+                        ",\nisReference=" + isReference + "\n" +
                         '}';
     }
 }
