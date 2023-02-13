@@ -158,13 +158,13 @@ public class ProphetPlugin {
 
                 if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
                     Service ser = processService(clazz);
-                    System.out.println("SERVICE: " + ser);
+//                    System.out.println("SERVICE: " + ser);
                     services.add(ser);
                 }
 
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
                     Entity entity = processEntity(clazz, ann);
-                    System.out.println("ENTITIES: " + entity);
+//                    System.out.println("ENTITIES: " + entity);
                     entities.add(entity);
                 }
             }
