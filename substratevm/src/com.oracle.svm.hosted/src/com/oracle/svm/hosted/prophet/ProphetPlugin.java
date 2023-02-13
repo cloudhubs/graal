@@ -13,6 +13,7 @@ import com.oracle.svm.hosted.prophet.model.Entity;
 import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
+import com.oracle.svm.hosted.prophet.model.Service;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -143,6 +144,8 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
+        var services = new HashSet<Service>();
+
         for (Class<?> clazz : classes) {
             if (extractRestCalls)
                 processMethods(clazz);
@@ -154,11 +157,14 @@ public class ProphetPlugin {
             for (Annotation ann : annotations) {
 
                 if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
-                    processService(clazz);
+                    Service ser = processService(clazz);
+                    System.out.println("SERVICE: " + ser);
+                    services.add(ser);
                 }
 
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
                     Entity entity = processEntity(clazz, ann);
+                    System.out.println("ENTITIES: " + entity);
                     entities.add(entity);
                 }
             }
@@ -166,29 +172,46 @@ public class ProphetPlugin {
         return new Module(new Name(modulename), entities);
     }
 
-    private void processService(Class<?> clazz) {
+    private Service processService(Class<?> clazz) {
+//        System.out.println("===== Fields: " + clazz.getName() + " =====\n");
 
+        Name serviceName = new Name(clazz.getSimpleName());
+        serviceName.setFullName(clazz.getName());
 
-        java.lang.reflect.Field[] fields = clazz.getDeclaredFields();
+        Service s = new Service(serviceName);
 
-        System.out.println("===== Fields: " + clazz.getName() + " =====\n");
-        for (java.lang.reflect.Field f : fields) {
-            for (Annotation annots : f.getDeclaredAnnotations()) {
-                System.out.println("FIELD: " + f.getName() + " - " + annots.toString());
+        Set<Field> fields = new HashSet<>();
+        for (java.lang.reflect.Field f : clazz.getDeclaredFields()) {
+
+            // create new field
+            Field field = new Field();
+            field.setName(new Name(f.getName()));
+            field.setType(f.getType().getSimpleName());
+
+            // adding field annotations to field
+            Set<com.oracle.svm.hosted.prophet.model.Annotation> annots = new HashSet<>();
+            for (Annotation annot : f.getDeclaredAnnotations()) {
+                com.oracle.svm.hosted.prophet.model.Annotation newAnnot = new com.oracle.svm.hosted.prophet.model.Annotation();
+                newAnnot.setStringValue(annot.annotationType().getSimpleName());
+                newAnnot.setName("@" + annot.annotationType().getSimpleName());
+                annots.add(newAnnot);
             }
+            field.setAnnotations(annots);
+            fields.add(field);
         }
-        System.out.println("\n===== END Fields =====\n");
+//        System.out.println("\n===== END Fields =====\n");
 
-        Method[] m = clazz.getDeclaredMethods();
-
-        System.out.println("===== Methods: " + clazz.getName() + " =====\n");
-        for (Method meth : m) {
-            for (Annotation annots : meth.getDeclaredAnnotations()) {
-                System.out.println("METHOD: " + meth.getName() + " - " + annots.toString());
-            }
+//        System.out.println("===== Methods: " + clazz.getName() + " =====\n");
+        Set<Method> methods = new HashSet<>();
+        for (java.lang.reflect.Method meth : clazz.getDeclaredMethods()) {
+            methods.add(meth);
         }
-        System.out.println("\n===== END Methods =====\n");
+//        System.out.println("\n===== END Methods =====\n");
 
+        s.setServiceFields(fields);
+        s.setServiceMethods(methods);
+
+        return s;
     }
 
     private void processMethods(Class<?> clazz) {
@@ -373,6 +396,7 @@ public class ProphetPlugin {
         }
         Entity entity = new Entity(new Name(clazz.getSimpleName()));
         entity.setFields(fields);
+
         return entity;
     }
 

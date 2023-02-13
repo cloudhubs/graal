@@ -72,8 +72,6 @@ public class Entity {
 
     @Override
     public String toString() {
-        return "Entity{" +
-                        "entityName='" + entityName + '\'' +
-                        '}';
+        return "Entity {" + "entityName='" + entityName.getName() + " / " + entityName.getFullName() + "}";
     }
 }
