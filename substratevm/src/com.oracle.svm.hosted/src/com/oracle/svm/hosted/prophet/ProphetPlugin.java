@@ -14,8 +14,11 @@ import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
 import com.oracle.svm.hosted.prophet.model.Service;
+<<<<<<< HEAD
 import com.oracle.svm.hosted.prophet.model.Component;
 import com.oracle.svm.hosted.prophet.model.Controller;
+=======
+>>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -162,6 +165,14 @@ public class ProphetPlugin {
         Set<Controller> controllers = processControllers(classes);
         var entities = new HashSet<Entity>();
         var services = new HashSet<Service>();
+<<<<<<< HEAD
+=======
+
+        for (Class<?> clazz : classes) {
+            if (extractRestCalls)
+                processMethods(clazz);
+        }
+>>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
 
         //DAVID'S WORK
         // for (Class<?> clazz : classes) {
@@ -175,13 +186,21 @@ public class ProphetPlugin {
 
                 if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
                     Service ser = processService(clazz);
+<<<<<<< HEAD
 //                    System.out.println("SERVICE: " + ser);
+=======
+                    System.out.println("SERVICE: " + ser);
+>>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
                     services.add(ser);
                 }
 
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
                     Entity entity = processEntity(clazz, ann);
+<<<<<<< HEAD
 //                    System.out.println("ENTITIES: " + entity);
+=======
+                    System.out.println("ENTITIES: " + entity);
+>>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
                     entities.add(entity);
                 }
             }
@@ -224,6 +243,7 @@ public class ProphetPlugin {
         Set<Method> methods = new HashSet<>();
         for (java.lang.reflect.Method meth : clazz.getDeclaredMethods()) {
             methods.add(meth);
+<<<<<<< HEAD
         }
 //        System.out.println("\n===== END Methods =====\n");
 
@@ -273,6 +293,15 @@ public class ProphetPlugin {
             controllers.add(c);
         }
         return controllers;
+=======
+        }
+//        System.out.println("\n===== END Methods =====\n");
+
+        s.setServiceFields(fields);
+        s.setServiceMethods(methods);
+
+        return s;
+>>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
     }
 
     private void processMethods(Class<?> clazz) {
