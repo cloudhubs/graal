@@ -14,6 +14,7 @@ import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
 import com.oracle.svm.hosted.prophet.model.Service;
+import com.oracle.svm.hosted.prophet.model.Controller;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -143,6 +144,7 @@ public class ProphetPlugin {
     }
 
     private Module processClasses(List<Class<?>> classes) {
+        Set<Controller> controllers = processControllers(classes);
         var entities = new HashSet<Entity>();
         var services = new HashSet<Service>();
 
@@ -212,6 +214,42 @@ public class ProphetPlugin {
         s.setServiceMethods(methods);
 
         return s;
+    }
+    
+    private Set<Controller> processControllers(List<Class<?>> classes){
+        Set<Controller> controllers = new HashSet<Controller>();
+        for(Class<?> clazz : classes){
+            Controller c = new Controller();
+            c.setClass(clazz);
+            boolean serv = false;
+            Annotation[] annotations = clazz.getAnnotations();
+            for (Annotation ann : annotations){
+                if(ann.toString().toLowerCase().contains("controller")){
+                    //System.out.println("*Class*: " + clazz.getName() + " | " + ann.toString());
+                    serv = true;
+                }
+            }
+            if(serv){
+                Method[] methods = clazz.getMethods();
+                for (Method m : methods){
+                    c.addMethod(m);
+                    /*annotations = m.getDeclaredAnnotations();
+                    for (Annotation ann : annotations){
+                        System.out.println("*Method*: " + m.getName() + " | " + ann.toString());
+                    }*/
+                }
+                java.lang.reflect.Field[] fields = clazz.getDeclaredFields();
+                for (java.lang.reflect.Field f : fields){
+                    c.addField(f);
+                    /*annotations = f.getDeclaredAnnotations();
+                    for (Annotation ann : annotations){
+                        System.out.println("*Field*: " + f.getName() + " | " + ann.toString());
+                    }*/
+                }
+            }
+            controllers.add(c);
+        }
+        return controllers;
     }
 
     private void processMethods(Class<?> clazz) {
