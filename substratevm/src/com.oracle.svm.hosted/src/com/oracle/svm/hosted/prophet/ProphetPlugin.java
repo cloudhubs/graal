@@ -187,20 +187,28 @@ public class ProphetPlugin {
                 if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
                     Service ser = processService(clazz);
 <<<<<<< HEAD
+<<<<<<< HEAD
 //                    System.out.println("SERVICE: " + ser);
 =======
                     System.out.println("SERVICE: " + ser);
 >>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
+=======
+//                    System.out.println("SERVICE: " + ser);
+>>>>>>> 582dedaec2f (commenting out print statements)
                     services.add(ser);
                 }
 
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
                     Entity entity = processEntity(clazz, ann);
 <<<<<<< HEAD
+<<<<<<< HEAD
 //                    System.out.println("ENTITIES: " + entity);
 =======
                     System.out.println("ENTITIES: " + entity);
 >>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
+=======
+//                    System.out.println("ENTITIES: " + entity);
+>>>>>>> 582dedaec2f (commenting out print statements)
                     entities.add(entity);
                 }
             }
