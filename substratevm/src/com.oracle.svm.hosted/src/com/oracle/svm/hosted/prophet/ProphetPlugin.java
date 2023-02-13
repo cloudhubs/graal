@@ -13,6 +13,7 @@ import com.oracle.svm.hosted.prophet.model.Entity;
 import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
+<<<<<<< HEAD
 import com.oracle.svm.hosted.prophet.model.Service;
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -23,6 +24,9 @@ import com.oracle.svm.hosted.prophet.model.Controller;
 =======
 import com.oracle.svm.hosted.prophet.model.Controller;
 >>>>>>> 6c6014e36e4 (Added parsing for controllers)
+=======
+import com.oracle.svm.hosted.prophet.model.Controller;
+>>>>>>> 05ab8f1c803 (Added parsing for controllers)
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -222,6 +226,7 @@ public class ProphetPlugin {
         return new Module(new Name(modulename), entities);
     }
 
+<<<<<<< HEAD
     private Service processService(Class<?> clazz) {
 //        System.out.println("===== Fields: " + clazz.getName() + " =====\n");
 
@@ -272,6 +277,8 @@ public class ProphetPlugin {
 
 =======
 >>>>>>> 6c6014e36e4 (Added parsing for controllers)
+=======
+>>>>>>> 05ab8f1c803 (Added parsing for controllers)
     private Set<Controller> processControllers(List<Class<?>> classes){
         Set<Controller> controllers = new HashSet<Controller>();
         for(Class<?> clazz : classes){
@@ -289,9 +296,12 @@ public class ProphetPlugin {
                 Method[] methods = clazz.getMethods();
                 for (Method m : methods){
 <<<<<<< HEAD
+<<<<<<< HEAD
                     System.out.println("method added!");
 =======
 >>>>>>> 6c6014e36e4 (Added parsing for controllers)
+=======
+>>>>>>> 05ab8f1c803 (Added parsing for controllers)
                     c.addMethod(m);
                     /*annotations = m.getDeclaredAnnotations();
                     for (Annotation ann : annotations){
@@ -307,6 +317,7 @@ public class ProphetPlugin {
                     }*/
                 }
             }
+<<<<<<< HEAD
 <<<<<<< HEAD
             System.out.println("adding new Controller");
             controllers.add(c);
@@ -326,6 +337,11 @@ public class ProphetPlugin {
         }
         return controllers;
 >>>>>>> 6c6014e36e4 (Added parsing for controllers)
+=======
+            controllers.add(c);
+        }
+        return controllers;
+>>>>>>> 05ab8f1c803 (Added parsing for controllers)
     }
 
     private void processMethods(Class<?> clazz) {

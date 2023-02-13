@@ -12,6 +12,7 @@ public class Controller{
 
     Class<?> c;
 <<<<<<< HEAD
+<<<<<<< HEAD
     
     @Override
     public String toString() {
@@ -28,6 +29,8 @@ public class Controller{
     }
 =======
 >>>>>>> 6c6014e36e4 (Added parsing for controllers)
+=======
+>>>>>>> 05ab8f1c803 (Added parsing for controllers)
 
     public Controller(){
         methods = new HashSet<Method>();
