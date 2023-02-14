@@ -11,6 +11,20 @@ public class Controller{
     Set<java.lang.reflect.Field> fields;
 
     Class<?> c;
+    
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        
+        builder.append("\n");
+        builder.append("Layer Type: {Controller}");
+        builder.append("\nClass: {" + c.getName() + "}");
+        builder.append("\nMethods: {" + methods + "}");
+        builder.append("\nFields: {" + fields + "}");
+        builder.append("\n");
+
+        return builder.toString();
+    }
 
     public Controller(){
         methods = new HashSet<Method>();

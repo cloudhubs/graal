@@ -12,7 +12,9 @@ public class JsonDump {
     public static String dump(Object object) {
         try {
             JsonDump instance = new JsonDump();
+            System.out.println("beginning visiting elem");
             instance.visitElem(object);
+            System.out.println("visited elem");
             return instance.builder.toString();
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
@@ -84,6 +86,7 @@ public class JsonDump {
                 append(',');
             appendLn();
         }
+        System.out.println("\n" + builder + "\n");
     }
 
     private void appendLn() {

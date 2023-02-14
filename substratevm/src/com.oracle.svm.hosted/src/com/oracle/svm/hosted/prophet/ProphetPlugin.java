@@ -14,6 +14,7 @@ import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
 import com.oracle.svm.hosted.prophet.model.Service;
+import com.oracle.svm.hosted.prophet.model.Component;
 import com.oracle.svm.hosted.prophet.model.Controller;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -49,6 +50,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+
+import javax.crypto.CipherInputStream;
 
 public class ProphetPlugin {
 
@@ -110,13 +114,14 @@ public class ProphetPlugin {
         logger.info("Creating module " + modulename);
 
         var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, modulename, extractRestCalls);
-        Module module = plugin.doRun();
-        dumpModule(module);
+        plugin.doRun();
     }
 
     private static void dumpModule(Module module) {
         String outputFile = Options.ProphetOutputFile.getValue();
+        System.out.println("calling dump");
         String serialized = JsonDump.dump(module);
+        System.out.println("finished dump");
         if (outputFile != null) {
             logger.info("Writing the json into the output file: " + outputFile);
             try (var writer = new FileWriter(outputFile)) {
@@ -130,16 +135,27 @@ public class ProphetPlugin {
         }
     }
 
-    private Module doRun() {
+    private void doRun() {
         URL enumeration = loader.getClassLoader().getResource("application.yml");
         try {
             this.propMap = new org.yaml.snakeyaml.Yaml().load(new FileReader(enumeration.getFile()));
-            System.out.println(this.propMap);
+            // System.out.println(this.propMap);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
         var classes = filterRelevantClasses();
-        return processClasses(classes);
+        System.out.println("running dumpModule");
+        dumpModule(processControllerClasses(classes)); 
+        System.out.println("finish dump module");
+
+        // return processClasses(classes);
+    }
+    private Module processControllerClasses(List<Class<?>> classes){
+        System.out.println("beginnning processing Controllers");
+        Set<Controller> controllers = processControllers(classes);
+        System.out.println("processedControllers");
+        controllers.forEach(System.out::println);
+        return new Module(new Name(modulename), controllers);
     }
 
     private Module processClasses(List<Class<?>> classes) {
@@ -152,7 +168,6 @@ public class ProphetPlugin {
         //     if (extractRestCalls)
         //         processMethods(clazz);
         // }
-
         // Service class parsing
         for (Class<?> clazz : classes) {
             Annotation[] annotations = clazz.getAnnotations();
@@ -171,6 +186,8 @@ public class ProphetPlugin {
                 }
             }
         }
+
+
         return new Module(new Name(modulename), entities);
     }
 
@@ -216,6 +233,10 @@ public class ProphetPlugin {
         return s;
     }
     
+//TODO- implement toString for Entity and Service and then compare with ni-system-context.json in utils
+//TODO- find where "entities: " is hardcoded. 
+//TODO- incorporate Entity fields and functions in Controller and Service
+
     private Set<Controller> processControllers(List<Class<?>> classes){
         Set<Controller> controllers = new HashSet<Controller>();
         for(Class<?> clazz : classes){
@@ -232,6 +253,7 @@ public class ProphetPlugin {
             if(serv){
                 Method[] methods = clazz.getMethods();
                 for (Method m : methods){
+                    System.out.println("method added!");
                     c.addMethod(m);
                     /*annotations = m.getDeclaredAnnotations();
                     for (Annotation ann : annotations){
@@ -247,6 +269,7 @@ public class ProphetPlugin {
                     }*/
                 }
             }
+            System.out.println("adding new Controller");
             controllers.add(c);
         }
         return controllers;
