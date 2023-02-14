@@ -171,6 +171,9 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         Set<Controller> controllers = processControllers(classes);
+        for(Controller c : controllers){
+            c.output();
+        }
         var entities = new HashSet<Entity>();
         var services = new HashSet<Service>();
 <<<<<<< HEAD
@@ -283,12 +286,12 @@ public class ProphetPlugin {
         Set<Controller> controllers = new HashSet<Controller>();
         for(Class<?> clazz : classes){
             Controller c = new Controller();
-            c.setClass(clazz);
             boolean serv = false;
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations){
                 if(ann.toString().toLowerCase().contains("controller")){
                     //System.out.println("*Class*: " + clazz.getName() + " | " + ann.toString());
+                    c.setClass(clazz);
                     serv = true;
                 }
             }
@@ -319,8 +322,14 @@ public class ProphetPlugin {
             }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             System.out.println("adding new Controller");
             controllers.add(c);
+=======
+            if(c.getControllerClass() != null){
+                controllers.add(c);
+            }
+>>>>>>> 02b8e8bf7b7 (Fixed issue where non controllers were added to list of controllers)
         }
         return controllers;
 =======

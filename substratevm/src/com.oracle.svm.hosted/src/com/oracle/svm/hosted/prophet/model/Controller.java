@@ -38,6 +38,17 @@ public class Controller{
         c = null;
     }
 
+    public void output(){
+        System.out.println("Class: " + c.toString());
+        for(java.lang.reflect.Field f : fields){
+            System.out.println("Field: " + f.toString());
+        }
+        for(Method m : methods){
+            System.out.println("Method: " + m.toString());
+        }
+        System.out.println("-----");
+    }
+
     public void addMethod(Method m){
         methods.add(m);
     }
