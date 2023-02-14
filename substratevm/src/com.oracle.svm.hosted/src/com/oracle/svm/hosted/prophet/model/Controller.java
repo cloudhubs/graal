@@ -7,13 +7,9 @@ import java.lang.reflect.Method;
 
 public class Controller{
     Set<Method> methods;
-
     Set<java.lang.reflect.Field> fields;
-
     Class<?> c;
-<<<<<<< HEAD
-<<<<<<< HEAD
-    
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -27,10 +23,6 @@ public class Controller{
 
         return builder.toString();
     }
-=======
->>>>>>> 6c6014e36e4 (Added parsing for controllers)
-=======
->>>>>>> 05ab8f1c803 (Added parsing for controllers)
 
     public Controller(){
         methods = new HashSet<Method>();
@@ -38,16 +30,16 @@ public class Controller{
         c = null;
     }
 
-    public void output(){
-        System.out.println("Class: " + c.toString());
-        for(java.lang.reflect.Field f : fields){
-            System.out.println("Field: " + f.toString());
-        }
-        for(Method m : methods){
-            System.out.println("Method: " + m.toString());
-        }
-        System.out.println("-----");
-    }
+    // public void output(){
+    //     System.out.println("Class: " + c.toString());
+    //     for(java.lang.reflect.Field f : fields){
+    //         System.out.println("Field: " + f.toString());
+    //     }
+    //     for(Method m : methods){
+    //         System.out.println("Method: " + m.toString());
+    //     }
+    //     System.out.println("-----");
+    // }
 
     public void addMethod(Method m){
         methods.add(m);
