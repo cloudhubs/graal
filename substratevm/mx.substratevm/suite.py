@@ -76,15 +76,12 @@ suite = {
            },
         },
         "JACKSON_SNAKE" : {
-<<<<<<< HEAD
             "maven": {
                 "groupId" : "org.yaml",
                 "artifactId" : "snakeyaml",
                 "version" : "1.28"
             },
-=======
             "urls":["file:///Users/dkozak/Projects/prophet/deps/snakeyaml-1.28.jar"],
->>>>>>> 61bbe2e8cc0 (first url extracted)
             "digest" : "sha1:7cae037c3014350c923776548e71c9feb7a69259",
         },
         "LLVM_WRAPPER_SHADOWED": {

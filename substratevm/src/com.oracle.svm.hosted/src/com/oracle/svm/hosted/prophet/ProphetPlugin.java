@@ -13,10 +13,7 @@ import com.oracle.svm.hosted.prophet.model.Entity;
 import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
-<<<<<<< HEAD
 import com.oracle.svm.hosted.prophet.model.Service;
-=======
->>>>>>> 05ab8f1c803 (Added parsing for controllers)
 import com.oracle.svm.hosted.prophet.model.Controller;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -25,43 +22,20 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-<<<<<<< HEAD
-<<<<<<< HEAD
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-=======
->>>>>>> 17210551b67 (extracting method call, wip)
-import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
-import org.graalvm.compiler.options.Option;
-
-<<<<<<< HEAD
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-=======
-import java.lang.reflect.Method;
-//import java.lang.reflect.Field;
-
-import java.lang.annotation.Annotation;
-
->>>>>>> 08b908392b7 (parsed service classes with methods and fields)
-=======
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.options.Option;
-
-<<<<<<< HEAD
-import java.lang.reflect.Method;
-//import java.lang.reflect.Field;
-
-import java.lang.annotation.Annotation;
-
-=======
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-<<<<<<< HEAD
->>>>>>> 61bbe2e8cc0 (first url extracted)
-=======
->>>>>>> 9baab654556 (first url extracted)
->>>>>>> d3b679e1cd0 (rebase jack and Austin's work into mine)
+import java.lang.reflect.Method;
+import java.lang.annotation.Annotation;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.options.Option;
+import java.lang.reflect.Method;
+import java.lang.annotation.Annotation;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -76,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// todo move to a separate module for a faster compilation ?
 public class ProphetPlugin {
 
     private final ImageClassLoader loader;
@@ -174,10 +147,11 @@ public class ProphetPlugin {
         var entities = new HashSet<Entity>();
         var services = new HashSet<Service>();
 
-        for (Class<?> clazz : classes) {
-            if (extractRestCalls)
-                processMethods(clazz);
-        }
+        //DAVID'S WORK
+        // for (Class<?> clazz : classes) {
+        //     if (extractRestCalls)
+        //         processMethods(clazz);
+        // }
 
         // Service class parsing
         for (Class<?> clazz : classes) {
@@ -200,7 +174,6 @@ public class ProphetPlugin {
         return new Module(new Name(modulename), entities);
     }
 
-<<<<<<< HEAD
     private Service processService(Class<?> clazz) {
 //        System.out.println("===== Fields: " + clazz.getName() + " =====\n");
 
@@ -243,8 +216,6 @@ public class ProphetPlugin {
         return s;
     }
     
-=======
->>>>>>> 05ab8f1c803 (Added parsing for controllers)
     private Set<Controller> processControllers(List<Class<?>> classes){
         Set<Controller> controllers = new HashSet<Controller>();
         for(Class<?> clazz : classes){
@@ -310,21 +281,21 @@ public class ProphetPlugin {
 
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
-//                        System.out.println("NODE: " + node.toString());
+                       System.out.println("NODE: " + node.toString());
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
                             if (targetMethod.getQualifiedName().startsWith("org.springframework.web.client.RestTemplate")) {
-//                                System.out.println("NODE: " + node.toString() + " " + targetMethod.getQualifiedName());
-                                System.out.println(method.getQualifiedName());
-                                System.out.println(targetMethod.getQualifiedName());
+                               System.out.println("NODE: " + node.toString() + " " + targetMethod.getQualifiedName());
+                                // System.out.println(method.getQualifiedName());
+                                // System.out.println(targetMethod.getQualifiedName());
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                                 ValueNode zero = arguments.get(0);
                                 ValueNode one = arguments.get(1);
                                 if (one instanceof InvokeWithExceptionNode) {
                                     // todo figure out when this does not work
-                                    System.out.println("\tFirst arg is invoke:");
+                                    // System.out.println("\tFirst arg is invoke:");
                                     CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
                                     System.out.println(callTarget.targetMethod());
                                     System.out.println("\targs:");
@@ -334,22 +305,11 @@ public class ProphetPlugin {
                                     // todo assert it is really a toString invocation
                                     AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
                                     System.out.println("ToString receiver: " + toStringReceiver);
-<<<<<<< HEAD
-<<<<<<< HEAD
                                     StringBuilder stringBuilder = new StringBuilder();
-=======
->>>>>>> 17210551b67 (extracting method call, wip)
-=======
-                                    StringBuilder stringBuilder = new StringBuilder();
->>>>>>> 61bbe2e8cc0 (first url extracted)
                                     for (Node usage : toStringReceiver.usages()) {
                                         System.out.println("\t usage : " + usage);
                                         if (usage instanceof CallTargetNode) {
                                             CallTargetNode usageAsCallTarget = (CallTargetNode) usage;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 61bbe2e8cc0 (first url extracted)
                                             AnalysisMethod m = ((AnalysisMethod) usageAsCallTarget.targetMethod());
                                             if (m.getQualifiedName().startsWith("java.lang.AbstractStringBuilder.append")) {
                                                 System.out.println("\t\t is a calltarget to " + m);
@@ -374,35 +334,25 @@ public class ProphetPlugin {
                                                     }
                                                 }
                                             }
-<<<<<<< HEAD
-                                        }
-                                    }
-                                    System.out.println("Concatenated url: " + stringBuilder.toString());
-=======
                                             System.out.println("\t\t is a calltarget to " + usageAsCallTarget.targetMethod());
                                         }
                                     }
 
->>>>>>> 17210551b67 (extracting method call, wip)
-=======
-                                        }
-                                    }
-                                    System.out.println("Concatenated url: " + stringBuilder.toString());
->>>>>>> 61bbe2e8cc0 (first url extracted)
                                 }
+                            }
+                                    System.out.println("Concatenated url: " + stringBuilder.toString());
+                        }
                                 System.out.println(zero + " " + one);
                                 System.out.println("===");
-                            }
-                        }
                     }
-                } catch (Exception | LinkageError ex) {
-                    ex.printStackTrace();
                 }
             }
-        } catch (Exception | LinkageError ex) {
-            ex.printStackTrace();
+        } 
+        catch (Exception | LinkageError ex) {
+                    ex.printStackTrace();
         }
     }
+
 
     private String tryResolve(String expr) {
         String mergedKey = expr.substring(2, expr.length() - 1);
