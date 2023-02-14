@@ -126,6 +126,9 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         Set<Controller> controllers = processControllers(classes);
+        for(Controller c : controllers){
+            c.output();
+        }
         var entities = new HashSet<Entity>();
         var services = new HashSet<Service>();
 
@@ -201,12 +204,12 @@ public class ProphetPlugin {
         Set<Controller> controllers = new HashSet<Controller>();
         for(Class<?> clazz : classes){
             Controller c = new Controller();
-            c.setClass(clazz);
             boolean serv = false;
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations){
                 if(ann.toString().toLowerCase().contains("controller")){
                     //System.out.println("*Class*: " + clazz.getName() + " | " + ann.toString());
+                    c.setClass(clazz);
                     serv = true;
                 }
             }
@@ -228,7 +231,9 @@ public class ProphetPlugin {
                     }*/
                 }
             }
-            controllers.add(c);
+            if(c.getControllerClass() != null){
+                controllers.add(c);
+            }
         }
         return controllers;
     }
