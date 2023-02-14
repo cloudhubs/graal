@@ -253,103 +253,48 @@ public class ProphetPlugin {
     }
 
     private void processMethods(Class<?> clazz) {
-//        System.out.println("HELLO WERE IN DAVIDS METHOD");
+        // System.out.println("HELLO WERE IN DAVIDS METHOD");
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
-                if (!method.getQualifiedName().contains("EmsService.getExams")) {
-                    continue;
-                }
                 try {
-
-                    /*
-                     * General idea:
-                     * 1) find rest invoke
-                     * 2) check the first argument - ip address
-                     * 3) if a string - done
-                     *  if not a string - then it should be an stringbuilder.toString invoke
-                     *  4) find the receiver of the toString invocation
-                     *  5) filter all its usages to find the .append calls
-                     *  6) find the arguments to the append calls
-                     *  7) try to extract the string constant for each
-                     *       should be either
-                     *         a) direct string/char
-                     *         b) param passed into the method  (for configurable uris like /productis/{id}/smth)
-                     *         c) loadfield
-                     *              if a loadfield, try to extract its  @Value annottion and load the value from config file
-                     */
-
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
-                       System.out.println("NODE: " + node.toString());
+                        // System.out.println("NODE: " + node.toString());
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
-                            if (targetMethod.getQualifiedName().startsWith("org.springframework.web.client.RestTemplate")) {
-                               System.out.println("NODE: " + node.toString() + " " + targetMethod.getQualifiedName());
-                                // System.out.println(method.getQualifiedName());
-                                // System.out.println(targetMethod.getQualifiedName());
+                            if (targetMethod.getQualifiedName()
+                                    .startsWith("org.springframework.web.client.RestTemplate")) {
+                                // System.out.println("NODE: " + node.toString() + " " +
+                                // targetMethod.getQualifiedName());
+                                System.out.println(method.getQualifiedName());
+                                System.out.println(targetMethod.getQualifiedName());
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                                 ValueNode zero = arguments.get(0);
                                 ValueNode one = arguments.get(1);
                                 if (one instanceof InvokeWithExceptionNode) {
                                     // todo figure out when this does not work
-                                    // System.out.println("\tFirst arg is invoke:");
+                                    System.out.println("\tFirst arg is invoke:");
                                     CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
                                     System.out.println(callTarget.targetMethod());
                                     System.out.println("\targs:");
                                     for (ValueNode argument : callTarget.arguments()) {
                                         System.out.println("\t" + argument);
                                     }
-                                    // todo assert it is really a toString invocation
-                                    AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
-                                    System.out.println("ToString receiver: " + toStringReceiver);
-                                    StringBuilder stringBuilder = new StringBuilder();
-                                    for (Node usage : toStringReceiver.usages()) {
-                                        System.out.println("\t usage : " + usage);
-                                        if (usage instanceof CallTargetNode) {
-                                            CallTargetNode usageAsCallTarget = (CallTargetNode) usage;
-                                            AnalysisMethod m = ((AnalysisMethod) usageAsCallTarget.targetMethod());
-                                            if (m.getQualifiedName().startsWith("java.lang.AbstractStringBuilder.append")) {
-                                                System.out.println("\t\t is a calltarget to " + m);
-                                                ValueNode fstArg = usageAsCallTarget.arguments().get(1);
-                                                System.out.println("\t\t" + fstArg);
-                                                if (fstArg instanceof LoadFieldNode) {
-                                                    System.out.println("\t\t\tload field " + fstArg);
-                                                    LoadFieldNode loadfieldNode = (LoadFieldNode) fstArg;
-                                                    AnalysisField field = (AnalysisField) loadfieldNode.field();
-                                                    for (Annotation annotation : field.getAnnotations()) {
-                                                        if (annotation.annotationType().getName().contains("Value")) {
-                                                            System.out.println("\t\t\tLoad field with value annotation");
-                                                            Method valueMethod = annotation.annotationType().getMethod("value");
-                                                            String propTemplate = ((String) valueMethod.invoke(annotation));
-                                                            System.out.println("\t\t\textracted value: " + propTemplate);
-                                                            String res = tryResolve(propTemplate);
-                                                            System.out.println("\t\t\t\t resolved: " + res);
-                                                            if (res != null) {
-                                                                stringBuilder.append(res);
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            System.out.println("\t\t is a calltarget to " + usageAsCallTarget.targetMethod());
-                                        }
-                                    }
-
                                 }
-                            }
-                                    System.out.println("Concatenated url: " + stringBuilder.toString());
-                        }
                                 System.out.println(zero + " " + one);
                                 System.out.println("===");
+                            }
+                        }
                     }
+                } catch (Exception | LinkageError ex) {
+                    ex.printStackTrace();
                 }
             }
-        } 
-        catch (Exception | LinkageError ex) {
-                    ex.printStackTrace();
+        } catch (Exception | LinkageError ex) {
+            ex.printStackTrace();
         }
     }
 
