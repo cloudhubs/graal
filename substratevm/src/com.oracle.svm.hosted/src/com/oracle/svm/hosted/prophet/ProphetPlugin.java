@@ -13,20 +13,9 @@ import com.oracle.svm.hosted.prophet.model.Entity;
 import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
-<<<<<<< HEAD
 import com.oracle.svm.hosted.prophet.model.Service;
-<<<<<<< HEAD
-<<<<<<< HEAD
 import com.oracle.svm.hosted.prophet.model.Component;
 import com.oracle.svm.hosted.prophet.model.Controller;
-=======
->>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
-=======
-import com.oracle.svm.hosted.prophet.model.Controller;
->>>>>>> 6c6014e36e4 (Added parsing for controllers)
-=======
-import com.oracle.svm.hosted.prophet.model.Controller;
->>>>>>> 05ab8f1c803 (Added parsing for controllers)
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -171,19 +160,8 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         Set<Controller> controllers = processControllers(classes);
-        for(Controller c : controllers){
-            c.output();
-        }
         var entities = new HashSet<Entity>();
         var services = new HashSet<Service>();
-<<<<<<< HEAD
-=======
-
-        for (Class<?> clazz : classes) {
-            if (extractRestCalls)
-                processMethods(clazz);
-        }
->>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
 
         //DAVID'S WORK
         // for (Class<?> clazz : classes) {
@@ -197,29 +175,13 @@ public class ProphetPlugin {
 
                 if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
                     Service ser = processService(clazz);
-<<<<<<< HEAD
-<<<<<<< HEAD
 //                    System.out.println("SERVICE: " + ser);
-=======
-                    System.out.println("SERVICE: " + ser);
->>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
-=======
-//                    System.out.println("SERVICE: " + ser);
->>>>>>> 582dedaec2f (commenting out print statements)
                     services.add(ser);
                 }
 
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
                     Entity entity = processEntity(clazz, ann);
-<<<<<<< HEAD
-<<<<<<< HEAD
 //                    System.out.println("ENTITIES: " + entity);
-=======
-                    System.out.println("ENTITIES: " + entity);
->>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
-=======
-//                    System.out.println("ENTITIES: " + entity);
->>>>>>> 582dedaec2f (commenting out print statements)
                     entities.add(entity);
                 }
             }
@@ -229,7 +191,6 @@ public class ProphetPlugin {
         return new Module(new Name(modulename), entities);
     }
 
-<<<<<<< HEAD
     private Service processService(Class<?> clazz) {
 //        System.out.println("===== Fields: " + clazz.getName() + " =====\n");
 
@@ -263,7 +224,6 @@ public class ProphetPlugin {
         Set<Method> methods = new HashSet<>();
         for (java.lang.reflect.Method meth : clazz.getDeclaredMethods()) {
             methods.add(meth);
-<<<<<<< HEAD
         }
 //        System.out.println("\n===== END Methods =====\n");
 
@@ -273,38 +233,27 @@ public class ProphetPlugin {
         return s;
     }
     
-<<<<<<< HEAD
 //TODO- implement toString for Entity and Service and then compare with ni-system-context.json in utils
 //TODO- find where "entities: " is hardcoded. 
 //TODO- incorporate Entity fields and functions in Controller and Service
 
-=======
->>>>>>> 6c6014e36e4 (Added parsing for controllers)
-=======
->>>>>>> 05ab8f1c803 (Added parsing for controllers)
     private Set<Controller> processControllers(List<Class<?>> classes){
         Set<Controller> controllers = new HashSet<Controller>();
         for(Class<?> clazz : classes){
             Controller c = new Controller();
+            c.setClass(clazz);
             boolean serv = false;
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations){
                 if(ann.toString().toLowerCase().contains("controller")){
                     //System.out.println("*Class*: " + clazz.getName() + " | " + ann.toString());
-                    c.setClass(clazz);
                     serv = true;
                 }
             }
             if(serv){
                 Method[] methods = clazz.getMethods();
                 for (Method m : methods){
-<<<<<<< HEAD
-<<<<<<< HEAD
                     System.out.println("method added!");
-=======
->>>>>>> 6c6014e36e4 (Added parsing for controllers)
-=======
->>>>>>> 05ab8f1c803 (Added parsing for controllers)
                     c.addMethod(m);
                     /*annotations = m.getDeclaredAnnotations();
                     for (Annotation ann : annotations){
@@ -320,37 +269,10 @@ public class ProphetPlugin {
                     }*/
                 }
             }
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
             System.out.println("adding new Controller");
             controllers.add(c);
-=======
-            if(c.getControllerClass() != null){
-                controllers.add(c);
-            }
->>>>>>> 02b8e8bf7b7 (Fixed issue where non controllers were added to list of controllers)
         }
         return controllers;
-=======
-        }
-//        System.out.println("\n===== END Methods =====\n");
-
-        s.setServiceFields(fields);
-        s.setServiceMethods(methods);
-
-        return s;
->>>>>>> 6b79d25dbb0 (created set and class of parsed Services)
-=======
-            controllers.add(c);
-        }
-        return controllers;
->>>>>>> 6c6014e36e4 (Added parsing for controllers)
-=======
-            controllers.add(c);
-        }
-        return controllers;
->>>>>>> 05ab8f1c803 (Added parsing for controllers)
     }
 
     private void processMethods(Class<?> clazz) {
@@ -376,16 +298,16 @@ public class ProphetPlugin {
                                 ValueNode one = arguments.get(1);
                                 if (one instanceof InvokeWithExceptionNode) {
                                     // todo figure out when this does not work
-                                    System.out.println("\tFirst arg is invoke:");
+                                    // System.out.println("\tFirst arg is invoke:");
                                     CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
-                                    System.out.println(callTarget.targetMethod());
-                                    System.out.println("\targs:");
-                                    for (ValueNode argument : callTarget.arguments()) {
-                                        System.out.println("\t" + argument);
-                                    }
+                                    // System.out.println(callTarget.targetMethod());
+                                    // System.out.println("\targs:");
+                                    // for (ValueNode argument : callTarget.arguments()) {
+                                    //     System.out.println("\t" + argument);
+                                    // }
                                 }
-                                System.out.println(zero + " " + one);
-                                System.out.println("===");
+                                // System.out.println(zero + " " + one);
+                                // System.out.println("===");
                             }
                         }
                     }
