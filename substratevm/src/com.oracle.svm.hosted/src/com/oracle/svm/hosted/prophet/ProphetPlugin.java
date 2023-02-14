@@ -283,7 +283,6 @@ public class ProphetPlugin {
                 try {
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
-                        // System.out.println("NODE: " + node.toString());
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
