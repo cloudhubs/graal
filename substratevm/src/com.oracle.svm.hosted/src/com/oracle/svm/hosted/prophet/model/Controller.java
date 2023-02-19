@@ -72,4 +72,38 @@ public class Controller{
     public Set<java.lang.reflect.Field> getFields(){
         return fields;
     }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(methods, fields, c);
+    }  
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Controller other = (Controller) obj;
+        if (methods == null) {
+            if (other.methods != null)
+                return false;
+        } else if (!methods.equals(other.methods))
+            return false;
+        if (fields == null) {
+            if (other.fields != null)
+                return false;
+        } else if (!fields.equals(other.fields))
+            return false;
+        if (c == null) {
+            if (other.c != null)
+                return false;
+        } else if (!c.equals(other.c))
+            return false;
+        return true;
+    }
+
+     
 }
