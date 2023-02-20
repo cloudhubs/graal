@@ -119,9 +119,9 @@ public class ProphetPlugin {
 
     private static void dumpModule(Module module) {
         String outputFile = Options.ProphetOutputFile.getValue();
-        System.out.println("calling dump");
+        // System.out.println("calling dump");
         String serialized = JsonDump.dump(module);
-        System.out.println("finished dump");
+        // System.out.println("finished dump");
         if (outputFile != null) {
             logger.info("Writing the json into the output file: " + outputFile);
             try (var writer = new FileWriter(outputFile)) {
@@ -135,7 +135,7 @@ public class ProphetPlugin {
         }
     }
 
-    private void doRun() {
+    private Module doRun() {
         URL enumeration = loader.getClassLoader().getResource("application.yml");
         try {
             this.propMap = new org.yaml.snakeyaml.Yaml().load(new FileReader(enumeration.getFile()));
@@ -144,22 +144,26 @@ public class ProphetPlugin {
             throw new RuntimeException(e);
         }
         var classes = filterRelevantClasses();
-        System.out.println("running dumpModule");
-        dumpModule(processControllerClasses(classes)); 
-        System.out.println("finish dump module");
+        // System.out.println("running dumpModule");
+        // dumpModule(processControllerClasses(classes)); 
+        // System.out.println("finish dump module");
 
-        // return processClasses(classes);
+        return processClasses(classes);
     }
-    private Module processControllerClasses(List<Class<?>> classes){
-        System.out.println("beginnning processing Controllers");
-        Set<Controller> controllers = processControllers(classes);
-        System.out.println("processedControllers");
-        controllers.forEach(System.out::println);
-        return new Module(new Name(modulename), controllers);
-    }
+    // private Module processControllerClasses(List<Class<?>> classes){
+    //     System.out.println("beginnning processing Controllers");
+    //     Set<Controller> controllers = processControllers(classes);
+    //     System.out.println("processedControllers");
+    //     controllers.forEach(System.out::println);
+    //     return new Module(new Name(modulename), controllers);
+    // }
 
     private Module processClasses(List<Class<?>> classes) {
         Set<Controller> controllers = processControllers(classes);
+        System.out.println("PRINTING CONTROLLERS");
+        for (Controller c : controllers){
+            System.out.println(c);            
+        }
         var entities = new HashSet<Entity>();
         var services = new HashSet<Service>();
 
@@ -169,19 +173,20 @@ public class ProphetPlugin {
         //         processMethods(clazz);
         // }
         // Service class parsing
+        System.out.println("\n\nPRINTING SERVICES");
         for (Class<?> clazz : classes) {
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
 
                 if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
                     Service ser = processService(clazz);
-//                    System.out.println("SERVICE: " + ser);
+                    System.out.println("SERVICE: " + ser);
                     services.add(ser);
                 }
 
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
                     Entity entity = processEntity(clazz, ann);
-//                    System.out.println("ENTITIES: " + entity);
+                    // System.out.println("ENTITIES: " + entity);
                     entities.add(entity);
                 }
             }
@@ -241,19 +246,19 @@ public class ProphetPlugin {
         Set<Controller> controllers = new HashSet<Controller>();
         for(Class<?> clazz : classes){
             Controller c = new Controller();
-            c.setClass(clazz);
             boolean serv = false;
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations){
                 if(ann.toString().toLowerCase().contains("controller")){
                     //System.out.println("*Class*: " + clazz.getName() + " | " + ann.toString());
+                    c.setClass(clazz);
                     serv = true;
                 }
             }
             if(serv){
                 Method[] methods = clazz.getMethods();
                 for (Method m : methods){
-                    System.out.println("method added!");
+                    // System.out.println("method added!");
                     c.addMethod(m);
                     /*annotations = m.getDeclaredAnnotations();
                     for (Annotation ann : annotations){
@@ -269,8 +274,9 @@ public class ProphetPlugin {
                     }*/
                 }
             }
-            System.out.println("adding new Controller");
-            controllers.add(c);
+            if (c.getControllerClass() != null){
+                controllers.add(c);
+            }
         }
         return controllers;
     }

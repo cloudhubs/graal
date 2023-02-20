@@ -60,11 +60,11 @@ public class Service {
 
     @Override
     public String toString() {
-        return "Service{" +
-                "\nserviceName=" + serviceName +
-                "\nserviceFields=" + serviceFields +
-                "\nserviceMethods=" + serviceMethods +
-                '}';
+        return "\nLayer Type: {Service}" +
+                "\nService Name: {" + serviceName + "}"+
+                "\nFields: {" + serviceFields + "}" +
+                "\nMethods" + serviceMethods +"}"+
+                '\n';
     }
 
     public Name getServiceName() {
