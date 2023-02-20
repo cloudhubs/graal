@@ -12,9 +12,9 @@ public class JsonDump {
     public static String dump(Object object) {
         try {
             JsonDump instance = new JsonDump();
-            // System.out.println("beginning visiting elem");
+            System.out.println("beginning visiting elem");
             instance.visitElem(object);
-            // System.out.println("visited elem");
+            System.out.println("visited elem");
             return instance.builder.toString();
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);

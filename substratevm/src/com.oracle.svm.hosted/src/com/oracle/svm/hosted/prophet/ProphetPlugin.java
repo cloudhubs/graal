@@ -109,7 +109,7 @@ public class ProphetPlugin {
         String basePackage = Options.ProphetBasePackage.getValue();
         String modulename = Options.ProphetModuleName.getValue();
         Boolean extractRestCalls = Options.ProphetRest.getValue();
-        logger.info("Running my new amazing Prophet plugin :)");
+        logger.info("Running Prophet plugin :)");
         logger.info("Analyzing all classes in the " + basePackage + " package.");
         logger.info("Creating module " + modulename);
 
@@ -135,7 +135,7 @@ public class ProphetPlugin {
         }
     }
 
-    private Module doRun() {
+    private void doRun() {
         URL enumeration = loader.getClassLoader().getResource("application.yml");
         try {
             this.propMap = new org.yaml.snakeyaml.Yaml().load(new FileReader(enumeration.getFile()));
@@ -144,26 +144,35 @@ public class ProphetPlugin {
             throw new RuntimeException(e);
         }
         var classes = filterRelevantClasses();
-        // System.out.println("running dumpModule");
-        // dumpModule(processControllerClasses(classes)); 
-        // System.out.println("finish dump module");
-
-        return processClasses(classes);
+        System.out.println("running dumpModule for CONTROLLERS");
+        dumpModule(processControllerClasses(classes)); 
+        System.out.println("finish dump module");
+        System.out.println("running dumpModule");
+        dumpModule(processControllerClasses(classes)); 
+        System.out.println("finish dump module");
+        // return processClasses(classes);
     }
-    // private Module processControllerClasses(List<Class<?>> classes){
-    //     System.out.println("beginnning processing Controllers");
-    //     Set<Controller> controllers = processControllers(classes);
-    //     System.out.println("processedControllers");
-    //     controllers.forEach(System.out::println);
-    //     return new Module(new Name(modulename), controllers);
-    // }
-
+    private Module processControllerClasses(List<Class<?>> classes){
+        System.out.println("beginnning processing Controllers");
+        Set<Controller> controllers = processControllers(classes);
+        System.out.println("processedControllers");
+        controllers.forEach(System.out::println);
+        return new Module(new Name(modulename), controllers);
+    }
+    private Module processServiceClasses(List<Class<?>> classes){
+        System.out.println("beginnning processing Services");
+        Set<Service> services = processService(classes);
+        System.out.println("processed Services");
+        services.forEach(System.out::println);
+        return new Module(new Name(modulename), services);
+    }
+    
     private Module processClasses(List<Class<?>> classes) {
         Set<Controller> controllers = processControllers(classes);
-        System.out.println("PRINTING CONTROLLERS");
-        for (Controller c : controllers){
-            System.out.println(c);            
-        }
+        // System.out.println("PRINTING CONTROLLERS");
+        // for (Controller c : controllers){
+        //     System.out.println(c);            
+        // }
         var entities = new HashSet<Entity>();
         var services = new HashSet<Service>();
 
@@ -173,14 +182,14 @@ public class ProphetPlugin {
         //         processMethods(clazz);
         // }
         // Service class parsing
-        System.out.println("\n\nPRINTING SERVICES");
+        // System.out.println("\n\nPRINTING SERVICES");
         for (Class<?> clazz : classes) {
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
 
                 if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
                     Service ser = processService(clazz);
-                    System.out.println("SERVICE: " + ser);
+                    // System.out.println("SERVICE: " + ser);
                     services.add(ser);
                 }
 
@@ -324,7 +333,6 @@ public class ProphetPlugin {
             ex.printStackTrace();
         }
     }
-
 
     private String tryResolve(String expr) {
         String mergedKey = expr.substring(2, expr.length() - 1);
