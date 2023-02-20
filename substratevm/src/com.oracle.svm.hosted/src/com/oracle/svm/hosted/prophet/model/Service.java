@@ -17,25 +17,25 @@ public class Service {
         this.serviceName = new Name(name);
     }
 
-    public Service(Name name, Set<Field> serviceFields /*, Set<Method> serviceMethods*/) {
+    public Service(Name name, Set<Field> serviceFields, Set<Method> serviceMethods) {
         this.serviceName = new Name(name);
         this.serviceFields = serviceFields;
         this.serviceMethods = serviceMethods;
     }
 
-    public Service clone() {
-        Set<Field> newFields = new HashSet<>(this.serviceFields.size());
-        this.getServiceFields().forEach(x -> {
-            newFields.add(x.clone());
-        });
+    // public Service clone() {
+    //     Set<Field> newFields = new HashSet<>(this.serviceFields.size());
+    //     this.getServiceFields().forEach(x -> {
+    //         newFields.add(x.clone());
+    //     });
 
-        // Set<Method> newServiceMethod = new HashSet<>(this.serviceMethods.size());
-        // this.getServiceMethods().forEach(y -> {
-        //     newServiceMethod.add(y.clone());
-        // });
+    //     // Set<Method> newServiceMethod = new HashSet<>(this.serviceMethods.size());
+    //     // this.getServiceMethods().forEach(y -> {
+    //     //     newServiceMethod.add(y.clone());
+    //     // });
 
-        return new Service(new Name(this.getServiceName()), newFields);
-    }
+    //     return new Service(new Name(this.getServiceName()), newFields);
+    // }
 
     public void setServiceFields(Set<Field> serviceFields) {
         this.serviceFields = serviceFields;

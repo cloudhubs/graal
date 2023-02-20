@@ -282,7 +282,6 @@ public class ProphetPlugin {
     }
 
     private void processMethods(Class<?> clazz) {
-        // System.out.println("HELLO WERE IN DAVIDS METHOD");
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
