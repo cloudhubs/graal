@@ -5,12 +5,11 @@ import java.util.Set;
 public class Module {
 
     private Name name;
-    //TODO: name will need refactored
-    private Set<?> entities;
+    private Set<?> layerItems;
 
-    public Module(Name name, Set<?> entities) {
+    public Module(Name name, Set<?> layerItems) {
         this.name = name;
-        this.entities = entities;
+        this.layerItems = layerItems;
     }
 
     public Name getName() {
@@ -21,11 +20,11 @@ public class Module {
         this.name = name;
     }
 
-    public Set<?> getEntities() {
-        return entities;
+    public Set<?> getLayerItems() {
+        return layerItems;
     }
 
-    public void setEntities(Set<?> entities) {
-        this.entities = entities;
+    public void setLayerItems(Set<?> layerItems) {
+        this.layerItems = layerItems;
     }
 }
