@@ -364,20 +364,6 @@ public class ProphetPlugin {
         }
         return res;
     }
-    private Module processControllerClasses(List<Class<?>> classes){
-        System.out.println("beginnning processing Controllers");
-        Set<Controller> controllers = processControllers(classes);
-        System.out.println("processedControllers");
-        controllers.forEach(System.out::println);
-        return new Module(new Name(modulename), controllers);
-    }
-    private Module processServiceClasses(List<Class<?>> classes){
-        System.out.println("beginnning processing Services");
-        Set<Service> services = processService(classes);
-        System.out.println("processed Services");
-        services.forEach(System.out::println);
-        return new Module(new Name(modulename), services);
-    }
     private Service processService(Class<?> clazz) {
         Name serviceName = new Name(clazz.getSimpleName());
         serviceName.setFullName(clazz.getName());
@@ -442,6 +428,20 @@ public class ProphetPlugin {
         }
         return controllers;
     }
+    // private Module processControllerClasses(List<Class<?>> classes){
+    //     System.out.println("beginnning processing Controllers");
+    //     Set<Controller> controllers = processControllers(classes);
+    //     System.out.println("processedControllers");
+    //     controllers.forEach(System.out::println);
+    //     return new Module(new Name(modulename), controllers);
+    // }
+    // private Module processServiceClasses(List<Class<?>> classes){
+    //     System.out.println("beginnning processing Services");
+    //     Set<Service> services = processService(classes);
+    //     System.out.println("processed Services");
+    //     services.forEach(System.out::println);
+    //     return new Module(new Name(modulename), services);
+    // }
 }
 
 
