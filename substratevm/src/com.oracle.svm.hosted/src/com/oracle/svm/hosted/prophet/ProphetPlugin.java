@@ -68,6 +68,8 @@ public class ProphetPlugin {
     private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle", "jdk.vm");
 
     private Map<String, Object> propMap;
+    private final Set<String> relationAnnotationNames = new HashSet<>(Arrays.asList("ManyToOne", "OneToMany", "OneToOne", "ManyToMany"));
+    private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
 
     public ProphetPlugin(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb, String basePackage, String modulename, Boolean extractRestCalls) {
         this.loader = loader;
@@ -102,9 +104,6 @@ public class ProphetPlugin {
         @Option(help = "Where to store the analysis output?")//
         public static final HostedOptionKey<String> ProphetOutputFile = new HostedOptionKey<>(null);
     }
-
-    private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
-
     public static void run(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb) {
         String basePackage = Options.ProphetBasePackage.getValue();
         String modulename = Options.ProphetModuleName.getValue();
@@ -114,14 +113,24 @@ public class ProphetPlugin {
         logger.info("Creating module " + modulename);
 
         var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, modulename, extractRestCalls);
-        plugin.doRun();
+        Module module = plugin.doRun();
+        dumpModule(module);
     }
 
+    private Module doRun() {
+        URL enumeration = loader.getClassLoader().getResource("application.yml");
+        try {
+            this.propMap = new org.yaml.snakeyaml.Yaml().load(new FileReader(enumeration.getFile()));
+            // System.out.println(this.propMap);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        var classes = filterRelevantClasses();
+        return processClasses(classes);
+    }
     private static void dumpModule(Module module) {
         String outputFile = Options.ProphetOutputFile.getValue();
-        // System.out.println("calling dump");
         String serialized = JsonDump.dump(module);
-        // System.out.println("finished dump");
         if (outputFile != null) {
             logger.info("Writing the json into the output file: " + outputFile);
             try (var writer = new FileWriter(outputFile)) {
@@ -134,176 +143,59 @@ public class ProphetPlugin {
             System.out.println(serialized);
         }
     }
-
-    private void doRun() {
-        URL enumeration = loader.getClassLoader().getResource("application.yml");
-        try {
-            this.propMap = new org.yaml.snakeyaml.Yaml().load(new FileReader(enumeration.getFile()));
-            // System.out.println(this.propMap);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-        var classes = filterRelevantClasses();
-        System.out.println("running dumpModule for CONTROLLERS");
-        dumpModule(processControllerClasses(classes)); 
-        System.out.println("finish dump module");
-        System.out.println("running dumpModule");
-        dumpModule(processControllerClasses(classes)); 
-        System.out.println("finish dump module");
-        // return processClasses(classes);
-    }
-    private Module processControllerClasses(List<Class<?>> classes){
-        System.out.println("beginnning processing Controllers");
-        Set<Controller> controllers = processControllers(classes);
-        System.out.println("processedControllers");
-        controllers.forEach(System.out::println);
-        return new Module(new Name(modulename), controllers);
-    }
-    private Module processServiceClasses(List<Class<?>> classes){
-        System.out.println("beginnning processing Services");
-        Set<Service> services = processService(classes);
-        System.out.println("processed Services");
-        services.forEach(System.out::println);
-        return new Module(new Name(modulename), services);
-    }
-    
     private Module processClasses(List<Class<?>> classes) {
-        Set<Controller> controllers = processControllers(classes);
-        // System.out.println("PRINTING CONTROLLERS");
-        // for (Controller c : controllers){
-        //     System.out.println(c);            
-        // }
         var entities = new HashSet<Entity>();
-        var services = new HashSet<Service>();
 
-        //DAVID'S WORK
-        // for (Class<?> clazz : classes) {
-        //     if (extractRestCalls)
-        //         processMethods(clazz);
-        // }
-        // Service class parsing
-        // System.out.println("\n\nPRINTING SERVICES");
+        //REST CALL EXTRACTION
+        for (Class<?> clazz : classes) {
+            if (extractRestCalls)
+                processMethods(clazz);
+        }
+        // Entity Extraction
         for (Class<?> clazz : classes) {
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
-
-                if (ann.annotationType().getName().contains("springframework") && ann.annotationType().getName().contains("Service")) {
-                    Service ser = processService(clazz);
-                    // System.out.println("SERVICE: " + ser);
-                    services.add(ser);
-                }
-
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
                     Entity entity = processEntity(clazz, ann);
-                    // System.out.println("ENTITIES: " + entity);
                     entities.add(entity);
                 }
             }
         }
-
-
         return new Module(new Name(modulename), entities);
     }
-
-    private Service processService(Class<?> clazz) {
-//        System.out.println("===== Fields: " + clazz.getName() + " =====\n");
-
-        Name serviceName = new Name(clazz.getSimpleName());
-        serviceName.setFullName(clazz.getName());
-
-        Service s = new Service(serviceName);
-
-        Set<Field> fields = new HashSet<>();
-        for (java.lang.reflect.Field f : clazz.getDeclaredFields()) {
-
-            // create new field
-            Field field = new Field();
-            field.setName(new Name(f.getName()));
-            field.setType(f.getType().getSimpleName());
-
-            // adding field annotations to field
-            Set<com.oracle.svm.hosted.prophet.model.Annotation> annots = new HashSet<>();
-            for (Annotation annot : f.getDeclaredAnnotations()) {
-                com.oracle.svm.hosted.prophet.model.Annotation newAnnot = new com.oracle.svm.hosted.prophet.model.Annotation();
-                newAnnot.setStringValue(annot.annotationType().getSimpleName());
-                newAnnot.setName("@" + annot.annotationType().getSimpleName());
-                annots.add(newAnnot);
-            }
-            field.setAnnotations(annots);
-            fields.add(field);
-        }
-//        System.out.println("\n===== END Fields =====\n");
-
-//        System.out.println("===== Methods: " + clazz.getName() + " =====\n");
-        Set<Method> methods = new HashSet<>();
-        for (java.lang.reflect.Method meth : clazz.getDeclaredMethods()) {
-            methods.add(meth);
-        }
-//        System.out.println("\n===== END Methods =====\n");
-
-        s.setServiceFields(fields);
-        s.setServiceMethods(methods);
-
-        return s;
-    }
     
-//TODO- implement toString for Entity and Service and then compare with ni-system-context.json in utils
-//TODO- find where "entities: " is hardcoded. 
-//TODO- incorporate Entity fields and functions in Controller and Service
-
-    private Set<Controller> processControllers(List<Class<?>> classes){
-        Set<Controller> controllers = new HashSet<Controller>();
-        for(Class<?> clazz : classes){
-            Controller c = new Controller();
-            boolean serv = false;
-            Annotation[] annotations = clazz.getAnnotations();
-            for (Annotation ann : annotations){
-                if(ann.toString().toLowerCase().contains("controller")){
-                    //System.out.println("*Class*: " + clazz.getName() + " | " + ann.toString());
-                    c.setClass(clazz);
-                    serv = true;
-                }
-            }
-            if(serv){
-                Method[] methods = clazz.getMethods();
-                for (Method m : methods){
-                    // System.out.println("method added!");
-                    c.addMethod(m);
-                    /*annotations = m.getDeclaredAnnotations();
-                    for (Annotation ann : annotations){
-                        System.out.println("*Method*: " + m.getName() + " | " + ann.toString());
-                    }*/
-                }
-                java.lang.reflect.Field[] fields = clazz.getDeclaredFields();
-                for (java.lang.reflect.Field f : fields){
-                    c.addField(f);
-                    /*annotations = f.getDeclaredAnnotations();
-                    for (Annotation ann : annotations){
-                        System.out.println("*Field*: " + f.getName() + " | " + ann.toString());
-                    }*/
-                }
-            }
-            if (c.getControllerClass() != null){
-                controllers.add(c);
-            }
-        }
-        return controllers;
-    }
-
     private void processMethods(Class<?> clazz) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
+                if (!method.getQualifiedName().contains("EmsService.getExams")) {
+                    continue;
+                }
                 try {
+
+                    /*
+                     * General idea:
+                     * 1) find rest invoke
+                     * 2) check the first argument - ip address
+                     * 3) if a string - done
+                     *  if not a string - then it should be an stringbuilder.toString invoke
+                     *  4) find the receiver of the toString invocation
+                     *  5) filter all its usages to find the .append calls
+                     *  6) find the arguments to the append calls
+                     *  7) try to extract the string constant for each
+                     *       should be either
+                     *         a) direct string/char
+                     *         b) param passed into the method  (for configurable uris like /productis/{id}/smth)
+                     *         c) loadfield
+                     *              if a loadfield, try to extract its  @Value annottion and load the value from config file
+                     */
+
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
-                            if (targetMethod.getQualifiedName()
-                                    .startsWith("org.springframework.web.client.RestTemplate")) {
-                                // System.out.println("NODE: " + node.toString() + " " +
-                                // targetMethod.getQualifiedName());
+                            if (targetMethod.getQualifiedName().startsWith("org.springframework.web.client.RestTemplate")) {
                                 System.out.println(method.getQualifiedName());
                                 System.out.println(targetMethod.getQualifiedName());
                                 CallTargetNode callTargetNode = invoke.callTarget();
@@ -312,16 +204,51 @@ public class ProphetPlugin {
                                 ValueNode one = arguments.get(1);
                                 if (one instanceof InvokeWithExceptionNode) {
                                     // todo figure out when this does not work
-                                    // System.out.println("\tFirst arg is invoke:");
+                                    System.out.println("\tFirst arg is invoke:");
                                     CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
-                                    // System.out.println(callTarget.targetMethod());
-                                    // System.out.println("\targs:");
-                                    // for (ValueNode argument : callTarget.arguments()) {
-                                    //     System.out.println("\t" + argument);
-                                    // }
+                                    System.out.println(callTarget.targetMethod());
+                                    System.out.println("\targs:");
+                                    for (ValueNode argument : callTarget.arguments()) {
+                                        System.out.println("\t" + argument);
+                                    }
+                                    // todo assert it is really a toString invocation
+                                    AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
+                                    System.out.println("ToString receiver: " + toStringReceiver);
+                                    StringBuilder stringBuilder = new StringBuilder();
+                                    for (Node usage : toStringReceiver.usages()) {
+                                        System.out.println("\t usage : " + usage);
+                                        if (usage instanceof CallTargetNode) {
+                                            CallTargetNode usageAsCallTarget = (CallTargetNode) usage;
+                                            AnalysisMethod m = ((AnalysisMethod) usageAsCallTarget.targetMethod());
+                                            if (m.getQualifiedName().startsWith("java.lang.AbstractStringBuilder.append")) {
+                                                System.out.println("\t\t is a calltarget to " + m);
+                                                ValueNode fstArg = usageAsCallTarget.arguments().get(1);
+                                                System.out.println("\t\t" + fstArg);
+                                                if (fstArg instanceof LoadFieldNode) {
+                                                    System.out.println("\t\t\tload field " + fstArg);
+                                                    LoadFieldNode loadfieldNode = (LoadFieldNode) fstArg;
+                                                    AnalysisField field = (AnalysisField) loadfieldNode.field();
+                                                    for (Annotation annotation : field.getAnnotations()) {
+                                                        if (annotation.annotationType().getName().contains("Value")) {
+                                                            System.out.println("\t\t\tLoad field with value annotation");
+                                                            Method valueMethod = annotation.annotationType().getMethod("value");
+                                                            String propTemplate = ((String) valueMethod.invoke(annotation));
+                                                            System.out.println("\t\t\textracted value: " + propTemplate);
+                                                            String res = tryResolve(propTemplate);
+                                                            System.out.println("\t\t\t\t resolved: " + res);
+                                                            if (res != null) {
+                                                                stringBuilder.append(res);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    System.out.println("Concatenated url: " + stringBuilder.toString());
                                 }
-                                // System.out.println(zero + " " + one);
-                                // System.out.println("===");
+                                System.out.println(zero + " " + one);
+                                System.out.println("===");
                             }
                         }
                     }
@@ -354,36 +281,8 @@ public class ProphetPlugin {
         return null;
     }
 
-    private void dumpAllClasses() {
-        logger.debug("---All app classes---");
-        allClasses.forEach(System.out::println);
-        logger.debug("---------------------");
-    }
 
-    private Set<Entity> filterEntityClasses(List<Class<?>> classes) {
-        var entities = new HashSet<Entity>();
-        for (Class<?> clazz : classes) {
-            Annotation[] annotations = clazz.getAnnotations();
-            for (Annotation ann : annotations) {
-                if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
-                    Entity entity = processEntity(clazz, ann);
-                    entities.add(entity);
-                }
-            }
-        }
-        return entities;
-    }
 
-    private List<Class<?>> filterRelevantClasses() {
-        var res = new ArrayList<Class<?>>();
-        for (Class<?> applicationClass : allClasses) {
-            if (applicationClass.getName().startsWith(basePackage))
-                res.add(applicationClass);
-        }
-        return res;
-    }
-
-    private final Set<String> relationAnnotationNames = new HashSet<>(Arrays.asList("ManyToOne", "OneToMany", "OneToOne", "ManyToMany"));
 
     private Entity processEntity(Class<?> clazz, Annotation ann) {
         var fields = new HashSet<Field>();
@@ -437,4 +336,113 @@ public class ProphetPlugin {
         } else
             return type.getName().contains("List");
     }
+    private void dumpAllClasses() {
+        logger.debug("---All app classes---");
+        allClasses.forEach(System.out::println);
+        logger.debug("---------------------");
+    }
+
+    private Set<Entity> filterEntityClasses(List<Class<?>> classes) {
+        var entities = new HashSet<Entity>();
+        for (Class<?> clazz : classes) {
+            Annotation[] annotations = clazz.getAnnotations();
+            for (Annotation ann : annotations) {
+                if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
+                    Entity entity = processEntity(clazz, ann);
+                    entities.add(entity);
+                }
+            }
+        }
+        return entities;
+    }
+
+    private List<Class<?>> filterRelevantClasses() {
+        var res = new ArrayList<Class<?>>();
+        for (Class<?> applicationClass : allClasses) {
+            if (applicationClass.getName().startsWith(basePackage))
+                res.add(applicationClass);
+        }
+        return res;
+    }
+    private Module processControllerClasses(List<Class<?>> classes){
+        System.out.println("beginnning processing Controllers");
+        Set<Controller> controllers = processControllers(classes);
+        System.out.println("processedControllers");
+        controllers.forEach(System.out::println);
+        return new Module(new Name(modulename), controllers);
+    }
+    private Module processServiceClasses(List<Class<?>> classes){
+        System.out.println("beginnning processing Services");
+        Set<Service> services = processService(classes);
+        System.out.println("processed Services");
+        services.forEach(System.out::println);
+        return new Module(new Name(modulename), services);
+    }
+    private Service processService(Class<?> clazz) {
+        Name serviceName = new Name(clazz.getSimpleName());
+        serviceName.setFullName(clazz.getName());
+
+        Service s = new Service(serviceName);
+
+        Set<Field> fields = new HashSet<>();
+        for (java.lang.reflect.Field f : clazz.getDeclaredFields()) {
+
+            // create new field
+            Field field = new Field();
+            field.setName(new Name(f.getName()));
+            field.setType(f.getType().getSimpleName());
+
+            // adding field annotations to field
+            Set<com.oracle.svm.hosted.prophet.model.Annotation> annots = new HashSet<>();
+            for (Annotation annot : f.getDeclaredAnnotations()) {
+                com.oracle.svm.hosted.prophet.model.Annotation newAnnot = new com.oracle.svm.hosted.prophet.model.Annotation();
+                newAnnot.setStringValue(annot.annotationType().getSimpleName());
+                newAnnot.setName("@" + annot.annotationType().getSimpleName());
+                annots.add(newAnnot);
+            }
+            field.setAnnotations(annots);
+            fields.add(field);
+        }
+
+        Set<Method> methods = new HashSet<>();
+        for (java.lang.reflect.Method meth : clazz.getDeclaredMethods()) {
+            methods.add(meth);
+        }
+
+        s.setServiceFields(fields);
+        s.setServiceMethods(methods);
+
+        return s;
+    }
+    private Set<Controller> processControllers(List<Class<?>> classes){
+        Set<Controller> controllers = new HashSet<Controller>();
+        for(Class<?> clazz : classes){
+            Controller c = new Controller();
+            boolean serv = false;
+            Annotation[] annotations = clazz.getAnnotations();
+            for (Annotation ann : annotations){
+                if(ann.toString().toLowerCase().contains("controller")){
+                    c.setClass(clazz);
+                    serv = true;
+                }
+            }
+            if(serv){
+                Method[] methods = clazz.getMethods();
+                for (Method m : methods){
+                    c.addMethod(m);
+                }
+                java.lang.reflect.Field[] fields = clazz.getDeclaredFields();
+                for (java.lang.reflect.Field f : fields){
+                    c.addField(f);
+                }
+            }
+            if (c.getControllerClass() != null){
+                controllers.add(c);
+            }
+        }
+        return controllers;
+    }
 }
+
+
+
