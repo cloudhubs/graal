@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import com.oracle.svm.hosted.prophet.Logger;
 
 // todo move to a separate module for a faster compilation ?
 public class ProphetPlugin {
@@ -43,6 +44,7 @@ public class ProphetPlugin {
     private final Boolean extractRestCalls;
     private final String basePackage;
     private final List<Class<?>> allClasses;
+    private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
 
     private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle", "jdk.vm");
 
@@ -80,13 +82,12 @@ public class ProphetPlugin {
         public static final HostedOptionKey<String> ProphetOutputFile = new HostedOptionKey<>(null);
     }
 
-    private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
 
     public static void run(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb) {
         String basePackage = Options.ProphetBasePackage.getValue();
         String modulename = Options.ProphetModuleName.getValue();
         Boolean extractRestCalls = Options.ProphetRest.getValue();
-        logger.info("Running my new amazing Prophet plugin :)");
+        logger.info("Running Prophet plugin :)");
         logger.info("Analyzing all classes in the " + basePackage + " package.");
         logger.info("Creating module " + modulename);
 
@@ -118,9 +119,10 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
+        logger.info("Amount of classes = " + classes.size());
         for (Class<?> clazz : classes) {
             if (extractRestCalls)
-                processMethods(clazz);
+                extractMSRestCalls(clazz);
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
@@ -132,7 +134,7 @@ public class ProphetPlugin {
         return new Module(new Name(modulename), entities);
     }
 
-    private void processMethods(Class<?> clazz) {
+    private void extractMSRestCalls(Class<?> clazz) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
@@ -143,8 +145,8 @@ public class ProphetPlugin {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
                             if (targetMethod.getQualifiedName().startsWith("org.springframework.web.client.RestTemplate")) {
-                                System.out.println("Method Qualified Name = " + method.getQualifiedName());
-                                System.out.println("Target Method Qualified Name = " + targetMethod.getQualifiedName());
+                                logger.info("Method Qualified Name = " + method.getQualifiedName());
+                                logger.info("Target Method Qualified Name = " + targetMethod.getQualifiedName());
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                                 ValueNode zero = arguments.get(0);
@@ -153,14 +155,15 @@ public class ProphetPlugin {
                                     // todo figure out when this does not work
                                     System.out.println("\tFirst arg is invoke:");
                                     CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
-                                    System.out.println(callTarget.targetMethod());
-                                    System.out.println("\targs:");
+                                    // System.out.println(callTarget.targetMethod());
+                                    System.out.println("\t\targs:");
                                     for (ValueNode argument : callTarget.arguments()) {
-                                        System.out.println("\targument = " + argument);
+                                        System.out.println("\t\targument = " + argument);
                                     }
                                 }
-                                System.out.println(zero + " " + one);
-                                System.out.println("===");
+
+                                logger.info("arg 0 = " + zero + ", arg 1 = " + one);
+                                logger.info("===========================================");
                             }
                         }
                     }
@@ -173,11 +176,11 @@ public class ProphetPlugin {
         }
     }
 
-    private void dumpAllClasses() {
-        logger.debug("---All app classes---");
-        allClasses.forEach(System.out::println);
-        logger.debug("---------------------");
-    }
+    // private void dumpAllClasses() {
+    //     logger.debug("---All app classes---");
+    //     allClasses.forEach(System.out::println);
+    //     logger.debug("---------------------");
+    // }
 
     private Set<Entity> filterEntityClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
@@ -196,7 +199,10 @@ public class ProphetPlugin {
     private List<Class<?>> filterRelevantClasses() {
         var res = new ArrayList<Class<?>>();
         for (Class<?> applicationClass : allClasses) {
-            if (applicationClass.getName().startsWith(basePackage))
+            // if (applicationClass.getName().startsWith("baylor.csi.questionManagement")){
+            //     System.out.println("app class name = " + applicationClass.getName());
+            // }
+            if (applicationClass.getName().startsWith(basePackage) && !applicationClass.isInterface())
                 res.add(applicationClass);
         }
         return res;
