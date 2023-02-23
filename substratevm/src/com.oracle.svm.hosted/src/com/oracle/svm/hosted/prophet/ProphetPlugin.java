@@ -143,8 +143,8 @@ public class ProphetPlugin {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
                             if (targetMethod.getQualifiedName().startsWith("org.springframework.web.client.RestTemplate")) {
-                                System.out.println(method.getQualifiedName());
-                                System.out.println(targetMethod.getQualifiedName());
+                                System.out.println("Method Qualified Name = " + method.getQualifiedName());
+                                System.out.println("Target Method Qualified Name = " + targetMethod.getQualifiedName());
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                                 ValueNode zero = arguments.get(0);
@@ -156,7 +156,7 @@ public class ProphetPlugin {
                                     System.out.println(callTarget.targetMethod());
                                     System.out.println("\targs:");
                                     for (ValueNode argument : callTarget.arguments()) {
-                                        System.out.println("\t" + argument);
+                                        System.out.println("\targument = " + argument);
                                     }
                                 }
                                 System.out.println(zero + " " + one);
