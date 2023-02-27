@@ -20,6 +20,11 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.Option;
+//import com.oracle.truffle.api.*;
+//import com.oracle.truffle.api.Truffle;
+//import org.springframework.web.bind.annotation.*;
+//import org.springframework.web.bind.annotation.PutMapping;
+
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -132,11 +137,53 @@ public class ProphetPlugin {
         return new Module(new Name(modulename), entities);
     }
 
+    //annotations for controller to get endpoints
+    private final Set<String> controllerAnnotationNames = new HashSet<>(Arrays.asList("GetMapping", "PutMapping", "DeleteMapping", "PostMapping"));
     private void processMethods(Class<?> clazz) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {
+
+                    //TODO: need to get the root endpoint
+                    // What I will need to extract; String httpMethod, String parentMethod, String arguments, String returnType
+                    //SECOND APPROACH:
+                    Annotation[] annotations = method.getAnnotations();
+                    for (Annotation annotation : annotations) {
+                        
+                        if (controllerAnnotationNames.contains(annotation.annotationType().getSimpleName())) {
+                            String httpMethod = null, path = null;
+                            if (annotation.annotationType().getName().startsWith("org.springframework.web.bind.annotation.PutMapping")) {
+                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
+                                httpMethod = "PUT";
+                            } else if (annotation.annotationType().getName().startsWith("org.springframework.web.bind.annotation.GetMapping")) {
+                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
+                                httpMethod = "GET";
+                            } else if (annotation.annotationType().getName().startsWith("org.springframework.web.bind.annotation.PostMapping")) {
+                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
+                                httpMethod = "POST";
+                            } else if (annotation.annotationType().getName().startsWith("org.springframework.web.bind.annotation.DeleteMapping")) {
+                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
+                                httpMethod = "DELETE";
+                            }
+                            System.out.println("HTTP Method: " + httpMethod + ", Path: " + path);
+                            
+                            //Special case for request mapping 
+                        }else if (annotation.annotationType().getSimpleName().equals("RequestMapping")){
+                         
+                            String[] pathArr = (String[]) annotation.annotationType().getMethod("path").invoke(annotation);
+                            String path = pathArr.length > 0 ? pathArr[0] : null;
+
+                            //cant use a string[] because of ClassCastException 
+                            Object[] methods = (Object[]) annotation.annotationType().getMethod("method").invoke(annotation);
+                            String httpMethod = null;
+                            if (methods.length > 0 && methods != null) {
+                                httpMethod = methods[0].toString();
+                            }
+                            System.out.println("HTTP Method: " + httpMethod + ", Path: " + path);
+                        }
+                    }
+
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
                         if (node instanceof Invoke) {
