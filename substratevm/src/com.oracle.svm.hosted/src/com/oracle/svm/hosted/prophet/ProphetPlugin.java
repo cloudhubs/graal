@@ -122,6 +122,7 @@ public class ProphetPlugin {
         for (Class<?> clazz : classes) {
             if (extractRestCalls)
                 EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
+                
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
@@ -133,11 +134,11 @@ public class ProphetPlugin {
         return new Module(new Name(modulename), entities);
     }
 
-    private void dumpAllClasses() {
-        logger.debug("---All app classes---");
-        allClasses.forEach(System.out::println);
-        logger.debug("---------------------");
-    }
+    // private void dumpAllClasses() {
+    //     logger.debug("---All app classes---");
+    //     allClasses.forEach(System.out::println);
+    //     logger.debug("---------------------");
+    // }
 
     private Set<Entity> filterEntityClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
