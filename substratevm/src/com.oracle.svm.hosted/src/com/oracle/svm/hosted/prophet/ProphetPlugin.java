@@ -12,6 +12,8 @@ import com.oracle.svm.hosted.prophet.model.Entity;
 import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
+import com.oracle.svm.hosted.prophet.RestCallExtraction;
+
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -32,6 +34,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import com.oracle.svm.hosted.prophet.Logger;
 
 // todo move to a separate module for a faster compilation ?
 public class ProphetPlugin {
@@ -44,6 +47,8 @@ public class ProphetPlugin {
     private final Boolean extractRestCalls;
     private final String basePackage;
     private final List<Class<?>> allClasses;
+    private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
+    private final Set<String> relationAnnotationNames = new HashSet<>(Arrays.asList("ManyToOne", "OneToMany", "OneToOne", "ManyToMany"));
 
     private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle", "jdk.vm");
 
@@ -81,13 +86,11 @@ public class ProphetPlugin {
         public static final HostedOptionKey<String> ProphetOutputFile = new HostedOptionKey<>(null);
     }
 
-    private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
-
     public static void run(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb) {
         String basePackage = Options.ProphetBasePackage.getValue();
         String modulename = Options.ProphetModuleName.getValue();
         Boolean extractRestCalls = Options.ProphetRest.getValue();
-        logger.info("Running my new amazing Prophet plugin :)");
+        logger.info("Running Prophet plugin :)");
         logger.info("Analyzing all classes in the " + basePackage + " package.");
         logger.info("Creating module " + modulename);
 
@@ -119,10 +122,12 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
+        logger.info("Amount of classes = " + classes.size());
         for (Class<?> clazz : classes) {
-            if (extractRestCalls)
+            if (extractRestCalls){
                 EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
-                
+                RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb);
+            }
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {
                 if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
@@ -153,17 +158,19 @@ public class ProphetPlugin {
         }
         return entities;
     }
-
+    
     private List<Class<?>> filterRelevantClasses() {
         var res = new ArrayList<Class<?>>();
         for (Class<?> applicationClass : allClasses) {
-            if (applicationClass.getName().startsWith(basePackage))
+            if (applicationClass.getName().startsWith("edu.baylor.ecs.cms")){
+                System.out.println("app class name = " + applicationClass.getName());
+            }
+            if (applicationClass.getName().startsWith(basePackage) && !applicationClass.isInterface())
                 res.add(applicationClass);
         }
         return res;
     }
 
-    private final Set<String> relationAnnotationNames = new HashSet<>(Arrays.asList("ManyToOne", "OneToMany", "OneToOne", "ManyToMany"));
 
     private Entity processEntity(Class<?> clazz, Annotation ann) {
         var fields = new HashSet<Field>();
