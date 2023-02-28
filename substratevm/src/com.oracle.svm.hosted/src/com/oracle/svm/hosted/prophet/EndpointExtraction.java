@@ -49,62 +49,16 @@ public class EndpointExtraction {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {
 
-                    // System.out.println("============");
-
-                    // //Code to get the returnType attribute:
-                    
-
-
-                    // //Code to get the parentMethod attribute:
-                    // Parameter[] params = method.getParameters();
-                    // System.out.println("Annotations for Method: " + method.getQualifiedName());
-                    // String parentMethod = null;
-                    // //following the rad-source format for the parentMethod JSON need to parse before the first parenthesis
-                    // parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
-                    // System.out.println("PARENTSS:: " + parentMethod);
-
-
-
-                    // //Code to get the argument attribute:
-                    // // Example: "arguments": "[@PathVariable Integer id]",
-                    // Annotation[][] annotations1 = method.getParameterAnnotations();
-                    // ArrayList<String> parameterAnnotationsList = new ArrayList<>();
-                    // for (int i = 0; i < annotations1.length; i++) {
-                    //     Annotation[] annotations2 = annotations1[i];
-                    //     for (int j = 0; j < annotations2.length; j++) {
-                    //         Annotation annotation = annotations2[j];
-                    //         //System.out.println("THIS MIGHT BE THE PARAMETER ANNOTATION BRUH: " + annotation.annotationType().getSimpleName());
-                    //         parameterAnnotationsList.add("@" + annotation.annotationType().getSimpleName());
-                    //     }
-                    // }
-
-                    // if(parameterAnnotationsList.size() > 0){
-                    //     int j = 0;
-                    //     for(Parameter p: params){
-                    //         String parameterType = p.getParameterizedType().toString();
-                    //         parameterAnnotationsList.set(j, parameterAnnotationsList.get(j) + " " + 
-                    //         parameterType.substring(parameterType.lastIndexOf(".")+1,parameterType.length()) + " " +
-                    //         p.getName());
-
-                    //         j++;
-                    //         //System.out.println("NAME: " + p.getName() + " ---- PARAMETERIZED TYPE: " + p.getParameterizedType());
-                    //     }
-
-                    //     for(String value : parameterAnnotationsList){
-                    //         System.out.println("argument: " + value);
-                    //     }
-                    // }
-
-                    // System.out.println("============");
-
-                    
-
-                    // //TODO: need to get the root endpoint
-                    // // What I will need to extract; String httpMethod, String parentMethod, String arguments, String returnType
+                    // What I will need to extract: String httpMethod, String parentMethod, String arguments, String returnType
                     Annotation[] annotations = method.getAnnotations();
                     for (Annotation annotation : annotations) {
                         
                         if (controllerAnnotationNames.contains(annotation.annotationType().getSimpleName())) {
+                            System.out.println("============");
+                             //Code to get the parentMethod attribute:
+                            //following the rad-source format for the parentMethod JSON need to parse before the first parenthesis
+                            String parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
+                            
                             String httpMethod = null, path = null;
                             if (annotation.annotationType().getName().startsWith(PUT_MAPPING)) {
                                 path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
@@ -120,13 +74,23 @@ public class EndpointExtraction {
                                 httpMethod = "DELETE";
                             }
 
-
+                            ArrayList<String> parameterAnnotationsList = extractArguments(method);
                             //Class<?> returnType = annotation.returnType();
-                            System.out.println("HTTP Method: " + httpMethod + ", Path: " + path + ", ReturnType: ");
-                            
+                            System.out.println("HTTP Method: " + httpMethod);
+                            System.out.println("Path: " + path);
+                            System.out.println("parentMethod: " + parentMethod);
+                            for(String value : parameterAnnotationsList){
+                                System.out.println("argument: " + value);
+                            }
+
+                            System.out.println("============");
                             //Special case for request mapping 
                         }else if (annotation.annotationType().getSimpleName().equals("RequestMapping")){
-                         
+                            System.out.println("============");
+                            //Code to get the parentMethod attribute:
+                            String parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
+
+
                             String[] pathArr = (String[]) annotation.annotationType().getMethod("path").invoke(annotation);
                             String path = pathArr.length > 0 ? pathArr[0] : null;
 
@@ -137,38 +101,46 @@ public class EndpointExtraction {
                                 httpMethod = methods[0].toString();
                             }
 
+                            ArrayList<String> parameterAnnotationsList = extractArguments(method);
                             //Class<?> returnType = annotation.returnType();
-                            System.out.println("HTTP Method: " + httpMethod + ", Path: " + path + ", ReturnType: ");
+                            System.out.println("HTTP Method: " + httpMethod);
+                            System.out.println("Path: " + path);
+                            System.out.println("parentMethod: " + parentMethod);
+                            for(String value : parameterAnnotationsList){
+                                System.out.println("argument: " + value);
+                            }
+                            System.out.println("============");
                         }
+                        
                     }
 
-                    StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
-                    for (Node node : decodedGraph.getNodes()) {
-                        if (node instanceof Invoke) {
-                            Invoke invoke = (Invoke) node;
-                            AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
-                            if (targetMethod.getQualifiedName().startsWith(REST_TEMPLATE_PACKAGE)) {
-                                System.out.println("Method Qualified Name = " + method.getQualifiedName());
-                                System.out.println("Target Method Qualified Name = " + targetMethod.getQualifiedName());
-                                CallTargetNode callTargetNode = invoke.callTarget();
-                                NodeInputList<ValueNode> arguments = callTargetNode.arguments();
-                                ValueNode zero = arguments.get(0);
-                                ValueNode one = arguments.get(1);
-                                if (one instanceof InvokeWithExceptionNode) {
-                                    // todo figure out when this does not work
-                                    System.out.println("\tFirst arg is invoke:");
-                                    CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
-                                    System.out.println(callTarget.targetMethod());
-                                    System.out.println("\targs:");
-                                    for (ValueNode argument : callTarget.arguments()) {
-                                        System.out.println("\targument = " + argument);
-                                    }
-                                }
-                                System.out.println(zero + " " + one);
-                                System.out.println("===");
-                            }
-                        }
-                    }
+                    // StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
+                    // for (Node node : decodedGraph.getNodes()) {
+                    //     if (node instanceof Invoke) {
+                    //         Invoke invoke = (Invoke) node;
+                    //         AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
+                    //         if (targetMethod.getQualifiedName().startsWith(REST_TEMPLATE_PACKAGE)) {
+                    //             System.out.println("Method Qualified Name = " + method.getQualifiedName());
+                    //             System.out.println("Target Method Qualified Name = " + targetMethod.getQualifiedName());
+                    //             CallTargetNode callTargetNode = invoke.callTarget();
+                    //             NodeInputList<ValueNode> arguments = callTargetNode.arguments();
+                    //             ValueNode zero = arguments.get(0);
+                    //             ValueNode one = arguments.get(1);
+                    //             if (one instanceof InvokeWithExceptionNode) {
+                    //                 // todo figure out when this does not work
+                    //                 System.out.println("\tFirst arg is invoke:");
+                    //                 CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
+                    //                 System.out.println(callTarget.targetMethod());
+                    //                 System.out.println("\targs:");
+                    //                 for (ValueNode argument : callTarget.arguments()) {
+                    //                     System.out.println("\targument = " + argument);
+                    //                 }
+                    //             }
+                    //             System.out.println(zero + " " + one);
+                    //             System.out.println("===");
+                    //         }
+                    //     }
+                    // }
                 } catch (Exception | LinkageError ex) {
                     ex.printStackTrace();
                 }
@@ -176,5 +148,35 @@ public class EndpointExtraction {
         } catch (Exception | LinkageError ex) {
             ex.printStackTrace();
         }
+    }
+
+
+    /* Helper function to extract arguments from a method */
+    public static ArrayList<String> extractArguments(AnalysisMethod method) {
+        //Code to get the argument attribute:
+        // Example: "arguments": "[@PathVariable Integer id]",
+        Annotation[][] annotations1 = method.getParameterAnnotations();
+        ArrayList<String> parameterAnnotationsList = new ArrayList<>();
+        for (int i = 0; i < annotations1.length; i++) {
+            Annotation[] annotations2 = annotations1[i];
+            for (int j = 0; j < annotations2.length; j++) {
+                Annotation annotation3 = annotations2[j];
+                parameterAnnotationsList.add("@" + annotation3.annotationType().getSimpleName());
+            }
+        }
+
+        Parameter[] params = method.getParameters();
+        if(parameterAnnotationsList.size() > 0){
+            int j = 0;
+            for(Parameter p: params){
+                String parameterType = p.getParameterizedType().toString();
+                parameterAnnotationsList.set(j, parameterAnnotationsList.get(j) + " " + 
+                parameterType.substring(parameterType.lastIndexOf(".")+1,parameterType.length()) + " " +
+                p.getName());
+
+                j++;
+            }
+        }
+        return parameterAnnotationsList;
     }
 }
