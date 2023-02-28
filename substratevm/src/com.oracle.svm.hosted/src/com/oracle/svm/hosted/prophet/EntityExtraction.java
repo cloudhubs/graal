@@ -38,47 +38,40 @@ public class EntityExtraction {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
+                
                 String fieldName = field.getName();
+
                 try {
                     if (field.getWrapped().getAnnotations().length > 0) {
+                        
+                        fieldMap.putIfAbsent(fieldName, new Field(field.getWrapped().getType().toString(), new Name(fieldName)));
+                        Set<com.oracle.svm.hosted.prophet.model.Annotation> annotationsSet = new HashSet<>();
 
-                        // add field
-                        fieldMap.putIfAbsent(fieldName, new Field("", new Name(fieldName)));
-
-                        // get annotations
                         for (Annotation ann : field.getWrapped().getAnnotations()) {
 
-                            // check if it is an entity annotation
-                            if (ann.toString().startsWith(ENTITY_PACKAGE)) {
-
-                                // create entity if its null
+                            if(ann.toString().startsWith(ENTITY_PACKAGE)){
+                                //Create new entity if it does not exist
                                 if (ent == null) {
                                     ent = new Entity(new Name(clazz.getSimpleName()));
                                 }
-
-                                // fetch the Field
-                                Field newField = fieldMap.get(fieldName);
-
-                                // add annotation to field
-                                Set<com.oracle.svm.hosted.prophet.model.Annotation> annotationsSet = newField.getAnnotations();
+                                //Create a new annotation and set it's name
                                 com.oracle.svm.hosted.prophet.model.Annotation tempAnnot = new com.oracle.svm.hosted.prophet.model.Annotation();
                                 tempAnnot.setName(ann.toString());
+                                //Add it to the set
                                 annotationsSet.add(tempAnnot);
-                                newField.setAnnotations(annotationsSet);
-
-                                // replace the old field
-                                fieldMap.put(fieldName, newField);
 
                             }
+
                         }
+                        //Add the annotation set to the field and put it in the map
+                        Field updatedField = fieldMap.get(fieldName);
+                        updatedField.setAnnotations(annotationsSet);
+                        fieldMap.put(fieldName, updatedField);
                     }
                 } catch (Exception | LinkageError ex) {
                     ex.printStackTrace();
                 }
             }
-
-            System.out.println("FIELDS: " + fieldMap.values());
-
             if (ent != null) {
                 if (!fieldMap.values().isEmpty())
                     ent.setFields(new HashSet<>(fieldMap.values()));
