@@ -5,7 +5,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.reachability.ReachabilityAnalysisMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,23 +62,30 @@ public class RestCallExtraction {
                                 System.out.println("===========================================");
                                 System.out.println("Method qualified name: " + method.getQualifiedName());
                                 System.out.println("Target method qualified name: " + targetMethod.getQualifiedName());
+                                Parameter[] parameters = targetMethod.getParameters();
+                                System.out.println("PRINTING PARAMETERS!");
+                                for(jdk.vm.ci.meta.ResolvedJavaMethod.Parameter a : parameters){
+                                    System.out.println("parameter = " + a + ", " + a.getName() + ", " + a.getParameterizedType().getTypeName());
+                                }
+                                System.out.println(targetMethod.getWrapped().getName() + ", " + targetMethod.getWrapped());
+                                System.out.println("----------------");
+
                                 parseHttpMethodType(targetMethod.getQualifiedName());
                                 parseParentMethod(method.getQualifiedName());
-                                System.out.println("canonincal name of class = " + clazz.getCanonicalName()); 
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                                 ValueNode zero = arguments.get(0);
                                 ValueNode one = arguments.get(1);
-                                if (one instanceof InvokeWithExceptionNode) {
-                                    // todo figure out when this does not work
-                                    System.out.println("\tFirst arg is invoke:");
-                                    CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
-                                    System.out.println("\t\tcallTarget.targetMethod() = " + callTarget.targetMethod());
-                                    System.out.println("\t\targs:");
-                                    for (ValueNode argument : callTarget.arguments()) {
-                                        System.out.println("\t\targument = " + argument);
-                                    }
-                                }
+                                // if (one instanceof InvokeWithExceptionNode) {
+                                //     // todo figure out when this does not work
+                                //     System.out.println("\tFirst arg is invoke:");
+                                //     CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
+                                //     System.out.println("\t\tcallTarget.targetMethod() = " + callTarget.targetMethod());
+                                //     System.out.println("\t\targs:");
+                                //     for (ValueNode argument : callTarget.arguments()) {
+                                //         System.out.println("\t\targument = " + argument);
+                                //     }
+                                // }
 
                                 System.out.println("arg 0 = " + zero + ", arg 1 = " + one);
                                 System.out.println("===========================================");
