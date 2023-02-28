@@ -7,6 +7,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.reachability.ReachabilityAnalysisMethod;
 
+import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.Option;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.util.AnnotationWrapper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -27,24 +29,21 @@ import com.oracle.svm.util.AnnotationWrapper;
 
 public class EntityExtraction {
 
-    private final static String ENTITY_PACKAGE = "javax.persistence";
+    private final static String ENTITY_PACKAGE = "@javax.persistence";
 
     public static void extractClassEntityCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
-//        System.out.println("IN ENTITY GRAAL");
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
+                String fieldName = field.getName();
                 try {
-                    System.out.println("~~~Field~~~");
-                    System.out.println(field.toString());
-
-                    Annotation[] annotations = field.getWrapped().getAnnotations();
-                    for(Annotation ann : annotations){
-                        System.out.println("+++Annotation+++");
-                        System.out.println(ann.toString());
-                        System.out.println("+++Annotation+++\n");
+                    if (field.getWrapped().getAnnotations().length > 0) {
+                        for (Annotation ann : field.getWrapped().getAnnotations()) {
+                            if (ann.toString().startsWith(ENTITY_PACKAGE)) {
+                                System.out.println(String.format("CLASS: %s, FIELD: %s, ANNOTATIONS: %s", clazz.getSimpleName(), fieldName, ann.toString()));
+                            }
+                        }
                     }
-                    System.out.println("~~~Field~~~\n");
                 }
                 catch (Exception | LinkageError ex) {
                     ex.printStackTrace();
