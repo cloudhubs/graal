@@ -28,11 +28,8 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
 import com.oracle.svm.hosted.prophet.Logger;
 
 // todo move to a separate module for a faster compilation ?
@@ -132,7 +129,11 @@ public class ProphetPlugin {
             if (extractRestCalls) {
                 RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb);
             }
-            EntityExtraction.extractClassEntityCalls(clazz, metaAccess, bb);
+
+            // add if class is entity
+            Optional<Entity> ent = EntityExtraction.extractClassEntityCalls(clazz, metaAccess, bb);
+            ent.ifPresent(entities::add);
+
         }
         return new Module(new Name(modulename), entities);
     }
