@@ -26,12 +26,12 @@ public class EntityExtraction {
     private final static String ENTITY_PACKAGE = "javax.persistence";
 
     public static void extractClassEntityCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
-        System.out.println("IN ENTITY GRAAL");
+//        System.out.println("IN ENTITY GRAAL");
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
                 try {
-                    System.out.println(field.getAnnotationRoot());
+                    System.out.println(field.toString());
 //                    for (Node node : field.getAnnotations()) {
 //                        if (node instanceof Invoke) {
 //                            Invoke invoke = (Invoke) node;
