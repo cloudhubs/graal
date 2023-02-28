@@ -21,6 +21,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.Option;
 import com.oracle.svm.hosted.analysis.Inflation;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
+import com.oracle.svm.util.AnnotationWrapper;
+
 public class EntityExtraction {
 
     private final static String ENTITY_PACKAGE = "javax.persistence";
@@ -31,16 +35,16 @@ public class EntityExtraction {
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
                 try {
+                    System.out.println("~~~Field~~~");
                     System.out.println(field.toString());
-//                    for (Node node : field.getAnnotations()) {
-//                        if (node instanceof Invoke) {
-//                            Invoke invoke = (Invoke) node;
-//                            AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
-//                            if (targetMethod.getQualifiedName().startsWith(ENTITY_PACKAGE)) {
-//                                System.out.println("ENTITY NAME: " + targetMethod.getQualifiedName());
-//                            }
-//                        }
-//                    }
+
+                    Annotation[] annotations = field.getWrapped().getAnnotations();
+                    for(Annotation ann : annotations){
+                        System.out.println("+++Annotation+++");
+                        System.out.println(ann.toString());
+                        System.out.println("+++Annotation+++\n");
+                    }
+                    System.out.println("~~~Field~~~\n");
                 }
                 catch (Exception | LinkageError ex) {
                     ex.printStackTrace();
