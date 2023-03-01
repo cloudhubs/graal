@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.prophet;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -12,6 +13,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -20,6 +23,10 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+
 import com.oracle.svm.hosted.analysis.Inflation;
 
 
@@ -53,6 +60,7 @@ public class RestCallExtraction {
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {
+                    
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
                         if (node instanceof Invoke) {
@@ -62,32 +70,67 @@ public class RestCallExtraction {
                                 System.out.println("===========================================");
                                 System.out.println("Method qualified name: " + method.getQualifiedName());
                                 System.out.println("Target method qualified name: " + targetMethod.getQualifiedName());
-                                Parameter[] parameters = targetMethod.getParameters();
-                                System.out.println("PRINTING PARAMETERS!");
-                                for(jdk.vm.ci.meta.ResolvedJavaMethod.Parameter a : parameters){
-                                    System.out.println("parameter = " + a + ", " + a.getName() + ", " + a.getParameterizedType().getTypeName());
-                                }
-                                System.out.println(targetMethod.getWrapped().getName() + ", " + targetMethod.getWrapped());
+                                // Parameter[] parameters = targetMethod.getParameters();
+                                // for(jdk.vm.ci.meta.ResolvedJavaMethod.Parameter a : parameters){
+                                //     System.out.println("\tparameter = " + a + ", getName = " + a.getName() + ", getparameterizedType().getTypeName() = " + a.getParameterizedType().getTypeName());
+                                // }
+                                // System.out.println("targetMethod.getWrapped().getName() = " + targetMethod.getWrapped().getName() + ", just the getWrapped() = " + targetMethod.getWrapped());
+                                // System.out.println("targetMethod.getSignature() = " + targetMethod.getSignature() + ", getSignature().getReturnType() = " + targetMethod.getSignature().getReturnType(targetMethod.getType()));
+                                parseHttpMethodType(targetMethod.getQualifiedName());
+                                parseParentMethod(method.getQualifiedName());                     
                                 System.out.println("----------------");
 
-                                parseHttpMethodType(targetMethod.getQualifiedName());
-                                parseParentMethod(method.getQualifiedName());
+
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                                 ValueNode zero = arguments.get(0);
                                 ValueNode one = arguments.get(1);
-                                // if (one instanceof InvokeWithExceptionNode) {
-                                //     // todo figure out when this does not work
-                                //     System.out.println("\tFirst arg is invoke:");
-                                //     CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
-                                //     System.out.println("\t\tcallTarget.targetMethod() = " + callTarget.targetMethod());
-                                //     System.out.println("\t\targs:");
-                                //     for (ValueNode argument : callTarget.arguments()) {
-                                //         System.out.println("\t\targument = " + argument);
-                                //     }
-                                // }
-
-                                System.out.println("arg 0 = " + zero + ", arg 1 = " + one);
+                                
+                                if (one instanceof InvokeWithExceptionNode) {
+                                    // todo figure out when this does not work
+                                    System.out.println("\tFirst arg is invoke:");
+                                    CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
+                                    System.out.println(callTarget.targetMethod());
+                                    System.out.println("\targs:");
+                                    for (ValueNode argument : callTarget.arguments()) {
+                                        System.out.println("\t" + argument);
+                                    }
+                                    // todo assert it is really a toString invocation
+                                    AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
+                                    System.out.println("ToString receiver: " + toStringReceiver);
+                                    StringBuilder stringBuilder = new StringBuilder();
+                                    for (Node usage : toStringReceiver.usages()) {
+                                        System.out.println("\t usage : " + usage);
+                                        if (usage instanceof CallTargetNode) {
+                                            CallTargetNode usageAsCallTarget = (CallTargetNode) usage;
+                                            AnalysisMethod m = ((AnalysisMethod) usageAsCallTarget.targetMethod());
+                                            if (m.getQualifiedName().startsWith("java.lang.AbstractStringBuilder.append")) {
+                                                System.out.println("\t\t is a calltarget to " + m);
+                                                ValueNode fstArg = usageAsCallTarget.arguments().get(1);
+                                                System.out.println("\t\t" + fstArg);
+                                                if (fstArg instanceof LoadFieldNode) {
+                                                    System.out.println("\t\t\tload field " + fstArg);
+                                                    LoadFieldNode loadfieldNode = (LoadFieldNode) fstArg;
+                                                    AnalysisField field = (AnalysisField) loadfieldNode.field();
+                                                    for (Annotation annotation : field.getAnnotations()) {
+                                                        if (annotation.annotationType().getName().contains("Value")) {
+                                                            System.out.println("\t\t\tLoad field with value annotation");
+                                                            Method valueMethod = annotation.annotationType().getMethod("value");
+                                                            String propTemplate = ((String) valueMethod.invoke(annotation));
+                                                            System.out.println("\t\t\textracted value: " + propTemplate);
+                                                            // String res = tryResolve(propTemplate);
+                                                            // System.out.println("\t\t\t\t resolved: " + res);
+                                                            // if (res != null) {
+                                                            //     stringBuilder.append(res);
+                                                            // }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    System.out.println("Concatenated url: " + stringBuilder.toString());
+                                }
                                 System.out.println("===========================================");
                             }
                         }
@@ -140,6 +183,24 @@ public class RestCallExtraction {
         System.out.println("PARENT METHOD = " + parentMethod);
         return parentMethod;
     }
-
+    // private static String tryResolve(String expr) {
+    //     String mergedKey = expr.substring(2, expr.length() - 1);
+    //     String[] path = mergedKey.split("\\.");
+    //     var curr = this.propMap;
+    //     for (int i = 0; i < path.length; i++) {
+    //         String key = path[i];
+    //         Object value = curr.get(key);
+    //         if (value == null) {
+    //             return null;
+    //         }
+    //         if (value instanceof String && i == path.length - 1) {
+    //             return ((String) value);
+    //         }
+    //         if (value instanceof Map) {
+    //             curr = ((Map<String, Object>) value);
+    //         }
+    //     }
+    //     return null;
+    // }
 
 }
