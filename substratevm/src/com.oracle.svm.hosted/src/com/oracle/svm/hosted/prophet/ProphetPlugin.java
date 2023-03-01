@@ -24,6 +24,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 
+import java.net.URL;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -34,6 +37,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+
 import com.oracle.svm.hosted.prophet.Logger;
 
 // todo move to a separate module for a faster compilation ?
@@ -49,6 +54,7 @@ public class ProphetPlugin {
     private final List<Class<?>> allClasses;
     private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
     private final Set<String> relationAnnotationNames = new HashSet<>(Arrays.asList("ManyToOne", "OneToMany", "OneToOne", "ManyToMany"));
+    private Map<String, Object> propMap;
 
     private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle", "jdk.vm");
 
@@ -116,6 +122,12 @@ public class ProphetPlugin {
     }
 
     private Module doRun() {
+        URL enumeration = loader.getClassLoader().getResource("application.yml");
+        try {
+            this.propMap = new org.yaml.snakeyaml.Yaml().load(new FileReader(enumeration.getFile()));
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         var classes = filterRelevantClasses();
         return processClasses(classes);
     }
@@ -126,7 +138,7 @@ public class ProphetPlugin {
         for (Class<?> clazz : classes) {
             if (extractRestCalls){
                 EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
-                RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb);
+                RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap);
             }
             Annotation[] annotations = clazz.getAnnotations();
             for (Annotation ann : annotations) {

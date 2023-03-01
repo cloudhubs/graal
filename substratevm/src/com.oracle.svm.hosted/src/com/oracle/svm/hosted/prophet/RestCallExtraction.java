@@ -55,7 +55,7 @@ public class RestCallExtraction {
         httpMethod does need exchange built out
         */
     private final static String REST_TEMPLATE_PACKAGE = "org.springframework.web.client.RestTemplate.";
-    public static void extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
+    public static void extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
@@ -85,7 +85,7 @@ public class RestCallExtraction {
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                                 ValueNode zero = arguments.get(0);
                                 ValueNode one = arguments.get(1);
-                                
+
                                 if (one instanceof InvokeWithExceptionNode) {
                                     // todo figure out when this does not work
                                     System.out.println("\tFirst arg is invoke:");
@@ -118,11 +118,11 @@ public class RestCallExtraction {
                                                             Method valueMethod = annotation.annotationType().getMethod("value");
                                                             String propTemplate = ((String) valueMethod.invoke(annotation));
                                                             System.out.println("\t\t\textracted value: " + propTemplate);
-                                                            // String res = tryResolve(propTemplate);
-                                                            // System.out.println("\t\t\t\t resolved: " + res);
-                                                            // if (res != null) {
-                                                            //     stringBuilder.append(res);
-                                                            // }
+                                                            String res = tryResolve(propTemplate, propMap);
+                                                            System.out.println("\t\t\t\t resolved: " + res);
+                                                            if (res != null) {
+                                                                stringBuilder.append(res);
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -183,24 +183,24 @@ public class RestCallExtraction {
         System.out.println("PARENT METHOD = " + parentMethod);
         return parentMethod;
     }
-    // private static String tryResolve(String expr) {
-    //     String mergedKey = expr.substring(2, expr.length() - 1);
-    //     String[] path = mergedKey.split("\\.");
-    //     var curr = this.propMap;
-    //     for (int i = 0; i < path.length; i++) {
-    //         String key = path[i];
-    //         Object value = curr.get(key);
-    //         if (value == null) {
-    //             return null;
-    //         }
-    //         if (value instanceof String && i == path.length - 1) {
-    //             return ((String) value);
-    //         }
-    //         if (value instanceof Map) {
-    //             curr = ((Map<String, Object>) value);
-    //         }
-    //     }
-    //     return null;
-    // }
+    private static String tryResolve(String expr, Map<String, Object> propMap) {
+        String mergedKey = expr.substring(2, expr.length() - 1);
+        String[] path = mergedKey.split("\\.");
+        var curr = propMap;
+        for (int i = 0; i < path.length; i++) {
+            String key = path[i];
+            Object value = curr.get(key);
+            if (value == null) {
+                return null;
+            }
+            if (value instanceof String && i == path.length - 1) {
+                return ((String) value);
+            }
+            if (value instanceof Map) {
+                curr = ((Map<String, Object>) value);
+            }
+        }
+        return null;
+    }
 
 }
