@@ -30,7 +30,7 @@ import com.oracle.svm.util.AnnotationWrapper;
 
 public class EntityExtraction {
 
-    private final static String ENTITY_PACKAGE = "@javax.persistence";
+    private final static String ENTITY_PACKAGE = "@javax.persistence.";
 
     public static Optional<Entity> extractClassEntityCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
         Entity ent = null;
@@ -56,12 +56,19 @@ public class EntityExtraction {
                                 }
                                 //Create a new annotation and set it's name
                                 com.oracle.svm.hosted.prophet.model.Annotation tempAnnot = new com.oracle.svm.hosted.prophet.model.Annotation();
-                                tempAnnot.setName(ann.toString());
+                                String annName = ann.toString();
+
+                                //String manipulation for annotation names
+                                if(annName.contains(ENTITY_PACKAGE)){
+                                    annName = annName.replace(ENTITY_PACKAGE, "");
+                                    annName = "@" + annName;
+                                    annName = annName.substring(0, annName.indexOf("("));
+                                }
+                                tempAnnot.setName(annName);
+
                                 //Add it to the set
                                 annotationsSet.add(tempAnnot);
-
                             }
-
                         }
                         //Add the annotation set to the field and put it in the map
                         Field updatedField = fieldMap.get(fieldName);
