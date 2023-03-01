@@ -31,6 +31,7 @@ import com.oracle.svm.util.AnnotationWrapper;
 public class EntityExtraction {
 
     private final static String ENTITY_PACKAGE = "@javax.persistence.";
+    private final static String PRIMITIVE_VALUE = "HotSpotResolvedPrimitiveType<";
 
     public static Optional<Entity> extractClassEntityCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
         Entity ent = null;
@@ -44,7 +45,16 @@ public class EntityExtraction {
                 try {
                     if (field.getWrapped().getAnnotations().length > 0) {
                         
-                        fieldMap.putIfAbsent(fieldName, new Field(field.getWrapped().getType().toString(), new Name(fieldName)));
+                        String typeName = field.getWrapped().getType().toString();
+                        //Handles HotSpotType and HotSpotResolvedPrimitiveType
+                        if(typeName.contains("/") && typeName.contains(";")){
+                            typeName = typeName.substring(typeName.lastIndexOf("/") + 1, typeName.indexOf(";"));
+                        }else if(typeName.contains(PRIMITIVE_VALUE)){
+                            typeName = typeName.replace(PRIMITIVE_VALUE, "");
+                            typeName = typeName.replace(">", "");
+                        }
+
+                        fieldMap.putIfAbsent(fieldName, new Field(typeName, new Name(fieldName)));
                         Set<com.oracle.svm.hosted.prophet.model.Annotation> annotationsSet = new HashSet<>();
 
                         for (Annotation ann : field.getWrapped().getAnnotations()) {
