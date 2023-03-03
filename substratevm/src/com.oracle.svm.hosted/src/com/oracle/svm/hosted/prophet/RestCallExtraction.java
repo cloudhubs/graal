@@ -92,7 +92,9 @@ public class RestCallExtraction {
                                     System.out.println("\targument = " + v);
                                     if (v instanceof Invoke){
                                         System.out.println("\t\tand IS an instance of Invoke");
-                                        System.out.println("\t\t\tcall target = " + ((Invoke)v).callTarget().arguments());
+
+                                        System.out.println("\t\t\tcall target = " + ((Invoke)v).callTarget());
+                                        traverseUpCallStack(((Invoke)v).callTarget());
                                         stringValNode = v;
                                     }
                                     else if (v instanceof AllocatedObjectNode){
@@ -170,6 +172,11 @@ public class RestCallExtraction {
         }
     }
 
+    private static void traverseUpCallStack(CallTargetNode node){
+        System.out.println("NODE CALL TARGET: " + node);
+        System.out.println("\tNODE CALL TARGET ARGS: " + node.arguments());
+        System.out.println("\t\t" + node.arguments.get(0).usages());
+    }
 
     /**
      * given a target method's qualified name, return http method type
