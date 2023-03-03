@@ -66,7 +66,7 @@ public class RestCallExtraction {
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
-                            if (targetMethod.getQualifiedName().startsWith(REST_TEMPLATE_PACKAGE)) {
+                            if (targetMethod.getQualifiedName().startsWith(REST_TEMPLATE_PACKAGE) && method.getQualifiedName().equals("edu.baylor.ecs.cms.service.EmsService.getExams()")) {
                                 System.out.println("===========================================");
                                 System.out.println("Method qualified name: " + method.getQualifiedName());
                                 System.out.println("Target method qualified name: " + targetMethod.getQualifiedName());
@@ -82,21 +82,46 @@ public class RestCallExtraction {
 
 
                                 CallTargetNode callTargetNode = invoke.callTarget();
+                                System.out.println("callTargetNode = " + callTargetNode);
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
-                                ValueNode zero = arguments.get(0);
-                                ValueNode one = arguments.get(1);
+                                System.out.println("arguments = " + arguments);
+                                ValueNode stringValNode = null;
+                                ValueNode allocObjValNode = null;
 
-                                if (one instanceof InvokeWithExceptionNode) {
-                                    // todo figure out when this does not work
-                                    System.out.println("\tFirst arg is invoke:");
-                                    CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
-                                    System.out.println(callTarget.targetMethod());
-                                    System.out.println("\targs:");
-                                    for (ValueNode argument : callTarget.arguments()) {
-                                        System.out.println("\t" + argument);
+                                for (ValueNode v : arguments){
+                                    System.out.println("\targument = " + v);
+                                    if (v instanceof Invoke){
+                                        System.out.println("\t\tand IS an instance of Invoke");
+                                        System.out.println("\t\t\tcall target = " + ((Invoke)v).callTarget().arguments());
+                                        stringValNode = v;
+                                    }
+                                    else if (v instanceof AllocatedObjectNode){
+                                        System.out.println("\t\tand IS an instance of AllocatedObjectNode");
+                                        System.out.println("\t\t\tallocated object usages = ");
+                                        for (Node usage : ((AllocatedObjectNode)v).usages()){
+                                            System.out.println("\t\t\t\tusage = " + usage);
+                                        }
+
+                                        allocObjValNode = v;
+                                    }
+                                    else{
+                                        System.out.println("\t\tand NOT an instance of invoke");
+                                    }
+                                } 
+
+                                // if (one instanceof InvokeWithExceptionNode) {
+                                if (stringValNode != null && allocObjValNode != null) {
+                                    // CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
+                                    CallTargetNode stringValCallTarget = ((Invoke) stringValNode).callTarget();
+                                    System.out.println("stringValNode = " + stringValNode);
+                                    System.out.println("\tstringValCallTargetMethod args:");
+                                    ValueNode stringValCallTargetArg = null;
+                                    for (ValueNode arg : stringValCallTarget.arguments()) {
+                                        System.out.println("\t\targ = " + arg);
+
                                     }
                                     // todo assert it is really a toString invocation
-                                    AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
+                                    /*AllocatedObjectNode toStringReceiver = (AllocatedObjectNode) callTarget.arguments().get(0);
                                     System.out.println("ToString receiver: " + toStringReceiver);
                                     StringBuilder stringBuilder = new StringBuilder();
                                     for (Node usage : toStringReceiver.usages()) {
@@ -130,6 +155,7 @@ public class RestCallExtraction {
                                         }
                                     }
                                     System.out.println("Concatenated url: " + stringBuilder.toString());
+                                    */
                                 }
                                 System.out.println("===========================================");
                             }
