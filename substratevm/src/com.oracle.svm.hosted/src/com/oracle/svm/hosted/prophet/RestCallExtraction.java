@@ -6,22 +6,22 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.reachability.ReachabilityAnalysisMethod;
+import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
+import com.oracle.svm.hosted.analysis.Inflation;
+
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.lir.ConstantValue;
-import org.graalvm.compiler.nodeinfo.Verbosity;
-import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import java.util.List;
-// import java.util.ArrayList;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -35,8 +35,10 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.lir.ConstantValue;
+import org.graalvm.compiler.nodeinfo.Verbosity;
 
-import com.oracle.svm.hosted.analysis.Inflation;
 
 
 public class RestCallExtraction {
@@ -59,17 +61,14 @@ public class RestCallExtraction {
         NOTE: 
         'msRoot' can be obtained in Utils or RAD
         'source' can be obtained in RAD repo in the RadSourceService file in generateRestEntityContext method where getSourceFiles is
-        
-        parentMethod and httpMethod are extracted, will try to extract return Type
-        httpMethod does need exchange built out
-        */
+    */
     private final static String REST_TEMPLATE_PACKAGE = "org.springframework.web.client.RestTemplate.";
     public static void extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {
-                    // if (!method.getQualifiedName().contains("getExamineeInfo")){
+                    // if (!method.getQualifiedName().contains("getINITExams")){
                     //     continue;
                     // }
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
@@ -89,15 +88,17 @@ public class RestCallExtraction {
                                 // System.out.println("targetMethod.getSignature() = " + targetMethod.getSignature() + ", getSignature().getReturnType() = " + targetMethod.getSignature().getReturnType(targetMethod.getType()));
                                 String HTTP_METHOD_TYPE = parseHttpMethodType(targetMethod.getQualifiedName());
 
-                                String PARENT_METHOD = parseParentMethod(method.getQualifiedName());                     
+                                String PARENT_METHOD = cleanParentMethod(method.getQualifiedName());                     
                                 CallTargetNode callTargetNode = invoke.callTarget();
-                                System.out.println("callTargetNode = " + callTargetNode);
+                                // System.out.println("callTargetNode = " + callTargetNode);
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
                                 // System.out.println("arguments = " + arguments);
                                 String URI = null;
                                 String RETURN_TYPE = null;
+                                Boolean callIsCollection = false;
+
                                 for (ValueNode v : arguments){
-                                    System.out.println("\targument = " + v);
+                                    // System.out.println("\targument = " + v);
                                     if (v instanceof Invoke && URI == null){
                                         // System.out.println("\t\tand IS an instance of Invoke");
 
@@ -107,6 +108,8 @@ public class RestCallExtraction {
                                         ConstantNode cn = (ConstantNode)v;
                                         DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
                                         RETURN_TYPE = dsoc.getObject().toString();
+                                        callIsCollection = isCollection(RETURN_TYPE);
+                                        RETURN_TYPE = cleanReturnType(RETURN_TYPE);
                                     }
 
                                     // else if (v instanceof AllocatedObjectNode){
@@ -125,10 +128,12 @@ public class RestCallExtraction {
                                 if (HTTP_METHOD_TYPE.equals("EXCHANGE")){
                                     HTTP_METHOD_TYPE = extractHttpType(callTargetNode);
                                 }
+
                                 System.out.println("PARENT METHOD = " + PARENT_METHOD);
                                 System.out.println("RETURN TYPE = " + RETURN_TYPE);
                                 System.out.println("HTTP_METHOD_TYPE = " + HTTP_METHOD_TYPE);
                                 System.out.println("URI = " + URI);
+                                System.out.println("IS COLLECTION = " + callIsCollection);
                                 System.out.println("===========================================");
                             }
                         }
@@ -140,6 +145,30 @@ public class RestCallExtraction {
         } catch (Exception | LinkageError ex) {
             ex.printStackTrace();
         }
+    }
+
+    private static String cleanReturnType(String returnType){
+        String parsedType = null;
+        if (returnType == null || returnType.equals("null")){
+            return parsedType;
+        }
+        //remove 'class [L' example: 'class [Ljava.lang.Object]' -> 'java.lang.Object'
+        if (isCollection(returnType)){
+            parsedType = returnType.substring(8);
+        }
+        //remove 'class ' example: 'class [Ljava.lang.Object]' -> '[Ljava.lang.Object'
+        else{
+            parsedType = returnType.substring(6);         
+        }
+        return parsedType;
+    } 
+
+    private static boolean isCollection(String returnType){
+        if (returnType == null || returnType.equals("null")){
+            return false;
+        }
+        //graal api indicates collections in return type with "class [L" before the type name
+        return returnType.startsWith("class [L");
     }
     private static String extractHttpType(CallTargetNode node){
         String httpType = "";
@@ -219,9 +248,13 @@ public class RestCallExtraction {
             }
             else if (arg instanceof ConstantNode){
                 ConstantNode cn = (ConstantNode)arg;
-                DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
-                // System.out.println("DSOC = " + dsoc.getObject().toString());
-                uriPortion = uriPortion + dsoc.getObject().toString();
+                //PrimitiveConstants can not be converted to DirectSubstrateObjectConstant
+                if (!(cn.getValue() instanceof PrimitiveConstant)){
+                    DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
+                    // System.out.println("DSOC = " + dsoc.getObject().toString());
+                    uriPortion = uriPortion + dsoc.getObject().toString();
+                }
+
             }
             else{
                 for (Node n : inputsList){
@@ -265,7 +298,7 @@ public class RestCallExtraction {
      * @param input the method's qualified name
      * @return the method the call is being made in
      */
-    private static String parseParentMethod(String input){
+    private static String cleanParentMethod(String input){
         String parentMethod = null;
         
         parentMethod = input.substring(0, input.indexOf("("));
