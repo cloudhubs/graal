@@ -8,14 +8,14 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.reachability.ReachabilityAnalysisMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 
-import java.lang.reflect.Type;
-import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.sound.sampled.SourceDataLine;
-
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.lir.ConstantValue;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import java.util.List;
 // import java.util.ArrayList;
 import java.lang.annotation.Annotation;
@@ -34,6 +34,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.PiNode;
 
 import com.oracle.svm.hosted.analysis.Inflation;
 
@@ -68,7 +69,9 @@ public class RestCallExtraction {
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {
-                    
+                    // if (!method.getQualifiedName().contains("getExamineeInfo")){
+                    //     continue;
+                    // }
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
                         if (node instanceof Invoke) {
@@ -84,25 +87,47 @@ public class RestCallExtraction {
                                 // }
                                 // System.out.println("targetMethod.getWrapped().getName() = " + targetMethod.getWrapped().getName() + ", just the getWrapped() = " + targetMethod.getWrapped());
                                 // System.out.println("targetMethod.getSignature() = " + targetMethod.getSignature() + ", getSignature().getReturnType() = " + targetMethod.getSignature().getReturnType(targetMethod.getType()));
-                                parseHttpMethodType(targetMethod.getQualifiedName());
-                                parseParentMethod(method.getQualifiedName());                     
-                                System.out.println("----------------");
+                                String HTTP_METHOD_TYPE = parseHttpMethodType(targetMethod.getQualifiedName());
+
+                                String PARENT_METHOD = parseParentMethod(method.getQualifiedName());                     
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 System.out.println("callTargetNode = " + callTargetNode);
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
-                                System.out.println("arguments = " + arguments);
+                                // System.out.println("arguments = " + arguments);
                                 String URI = null;
+                                String RETURN_TYPE = null;
                                 for (ValueNode v : arguments){
-                                    // System.out.println("\targument = " + v);
-                                    if (v instanceof Invoke){
+                                    System.out.println("\targument = " + v);
+                                    if (v instanceof Invoke && URI == null){
                                         // System.out.println("\t\tand IS an instance of Invoke");
 
                                         // System.out.println("\t\t\tcall target = " + ((Invoke)v).callTarget());
                                         URI = extractURI(((Invoke)v).callTarget(), propMap);
-                                        break;
-                                        // System.out.println("\n\n");
+                                    }else if (v instanceof ConstantNode && RETURN_TYPE == null){
+                                        ConstantNode cn = (ConstantNode)v;
+                                        DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
+                                        RETURN_TYPE = dsoc.getObject().toString();
                                     }
+
+                                    // else if (v instanceof AllocatedObjectNode){
+                                    //     System.out.println("Node is ALLOCATED_OBJECT_NODE");
+                                    //     System.out.println("\tinputs: " + v.inputs());
+                                    //     for (Node n : v.inputs()){
+                                    //         System.out.println("\tinput = " + n);
+                                    //     }
+                                    //     for (Node u : v.usages()){
+                                    //         System.out.println("\tusage = " + u);
+                                    //     }
+                                    // }
+
                                 } 
+                                //RestTemplate is an EXCHANGE, get specific HTTP type
+                                if (HTTP_METHOD_TYPE.equals("EXCHANGE")){
+                                    HTTP_METHOD_TYPE = extractHttpType(callTargetNode);
+                                }
+                                System.out.println("PARENT METHOD = " + PARENT_METHOD);
+                                System.out.println("RETURN TYPE = " + RETURN_TYPE);
+                                System.out.println("HTTP_METHOD_TYPE = " + HTTP_METHOD_TYPE);
                                 System.out.println("URI = " + URI);
                                 System.out.println("===========================================");
                             }
@@ -116,7 +141,39 @@ public class RestCallExtraction {
             ex.printStackTrace();
         }
     }
-
+    private static String extractHttpType(CallTargetNode node){
+        String httpType = "";
+        // System.out.println("------------");
+        // System.out.println("NODE CALL TARGET: " + node);
+        // System.out.println("NODE CALL TARGET ARGS: " + node.arguments());
+        for (ValueNode arg : node.arguments()){
+            // System.out.println("arg = " + arg);
+            if (arg instanceof Invoke){
+                // System.out.println(arg + " is Invoke");
+                httpType = extractHttpType(((Invoke)arg).callTarget());
+            }
+            else if (arg instanceof PiNode){
+                // System.out.println(arg + " is a PiNode");
+                // System.out.println(((PiNode)arg).inputs());
+                for (Node inputNode : ((PiNode)arg).inputs()){
+                    if (inputNode instanceof Invoke){
+                        // System.out.println(inputNode + " is Invoke");
+                        httpType = extractHttpType(((Invoke)inputNode).callTarget());
+                    }
+                }
+            }
+            else if (arg instanceof LoadFieldNode){
+                // System.out.println(tabs + "arg is a LOAD_FIELD_NODE, arg = " + arg);
+                LoadFieldNode loadfieldNode = (LoadFieldNode) arg;
+                // System.out.println("loadfieldnode = " + loadfieldNode.getValue());
+                AnalysisField field = (AnalysisField) loadfieldNode.field();
+                if (field.getDeclaringClass().getName().contains("HttpMethod")){
+                    httpType = field.getName();
+                }
+            }
+        }
+        return httpType;
+    }
     private static String extractURI(CallTargetNode node, Map<String, Object> propMap){
         // System.out.println(tabs + "NODE CALL TARGET: " + node);
         // System.out.println(tabs + "NODE CALL TARGET ARGS: " + node.arguments());
@@ -142,13 +199,29 @@ public class RestCallExtraction {
                             Method valueMethod = annotation.annotationType().getMethod("value");
                             valueMethod.setAccessible(true);
                             String res = tryResolve(((String)valueMethod.invoke(annotation)), propMap);
-                            System.out.println("RESOLVED: " + res);
+                            // System.out.println("RESOLVED: " + res);
                             uriPortion = uriPortion + res;
                         }catch(Exception ex){
                             System.err.println("ERROR = " + ex);
                         }
                     }
                 }
+            }
+            else if (arg instanceof PiNode){
+                // System.out.println(arg + " is a PiNode");
+                // System.out.println(((PiNode)arg).inputs());
+                for (Node inputNode : ((PiNode)arg).inputs()){
+                    if (inputNode instanceof Invoke){
+                        // System.out.println(inputNode + " is Invoke");
+                        uriPortion = uriPortion + extractURI(((Invoke)inputNode).callTarget(), propMap);
+                    }
+                }
+            }
+            else if (arg instanceof ConstantNode){
+                ConstantNode cn = (ConstantNode)arg;
+                DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
+                // System.out.println("DSOC = " + dsoc.getObject().toString());
+                uriPortion = uriPortion + dsoc.getObject().toString();
             }
             else{
                 for (Node n : inputsList){
@@ -185,7 +258,6 @@ public class RestCallExtraction {
                 break;
             }
         }
-        System.out.println("HTTP METHOD TYPE = " + httpMethodType);
         return httpMethodType;
     }
     /**
@@ -197,7 +269,6 @@ public class RestCallExtraction {
         String parentMethod = null;
         
         parentMethod = input.substring(0, input.indexOf("("));
-        System.out.println("PARENT METHOD = " + parentMethod);
         return parentMethod;
     }
     private static String tryResolve(String expr, Map<String, Object> propMap) {
