@@ -22,6 +22,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 
+import org.graalvm.polyglot.*;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -54,7 +55,7 @@ public class EndpointExtraction {
                     for (Annotation annotation : annotations) {
                         
                         if (controllerAnnotationNames.contains(annotation.annotationType().getSimpleName())) {
-                            System.out.println("============");
+                            
                              //Code to get the parentMethod attribute:
                             //following the rad-source format for the parentMethod JSON need to parse before the first parenthesis
                             String parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
@@ -75,7 +76,6 @@ public class EndpointExtraction {
                             }
 
                             ArrayList<String> parameterAnnotationsList = extractArguments(method);
-                            //Class<?> returnType = annotation.returnType();
                             System.out.println("HTTP Method: " + httpMethod);
                             System.out.println("Path: " + path);
                             System.out.println("parentMethod: " + parentMethod);
@@ -83,10 +83,16 @@ public class EndpointExtraction {
                                 System.out.println("argument: " + value);
                             }
 
+                            // Class<?>[] returnTypes = (Class<?>[]) annotation.getClass().getDeclaredMethod("value").invoke(annotation);
+                            // for (Class<?> returnType : returnTypes) {
+                            //     System.out.println("Return type: " + returnType.getName());
+                            // }
+                            System.out.println(method.toString());
+
                             System.out.println("============");
                             //Special case for request mapping 
                         }else if (annotation.annotationType().getSimpleName().equals("RequestMapping")){
-                            System.out.println("============");
+                            
                             //Code to get the parentMethod attribute:
                             String parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
 
@@ -102,13 +108,16 @@ public class EndpointExtraction {
                             }
 
                             ArrayList<String> parameterAnnotationsList = extractArguments(method);
-                            //Class<?> returnType = annotation.returnType();
                             System.out.println("HTTP Method: " + httpMethod);
                             System.out.println("Path: " + path);
                             System.out.println("parentMethod: " + parentMethod);
                             for(String value : parameterAnnotationsList){
                                 System.out.println("argument: " + value);
                             }
+                            
+                       
+                            //System.out.println(method.getSignature());
+                            
                             System.out.println("============");
                         }
                         
