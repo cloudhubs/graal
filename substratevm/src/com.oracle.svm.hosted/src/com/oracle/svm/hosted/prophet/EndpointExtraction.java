@@ -47,7 +47,6 @@ import java.util.Collection;
 
 public class EndpointExtraction {
 
-    private final static String REST_TEMPLATE_PACKAGE = "org.springframework.web.client.RestTemplate.";
     private final static String PUT_MAPPING = "org.springframework.web.bind.annotation.PutMapping";
     private final static String GET_MAPPING = "org.springframework.web.bind.annotation.GetMapping";
     private final static String POST_MAPPING = "org.springframework.web.bind.annotation.PostMapping";
