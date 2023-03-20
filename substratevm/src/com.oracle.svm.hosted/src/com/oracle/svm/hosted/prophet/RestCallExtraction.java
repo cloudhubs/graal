@@ -107,7 +107,7 @@ public class RestCallExtraction {
                                     }
                                     //NOTE: need to find definitive way of knowing if node holds return value
                                     //return type seems to be in substratemethod prior to a invoke of restTemplate.whatevercall 
-                                    else if (v instanceof ConstantNode){
+                                    else if (v instanceof ConstantNode && !v.isNullConstant() && !v.isIllegalConstant()){
                                         ConstantNode cn = (ConstantNode)v;
                                         // System.out.println("CONSTANT NODE = " + cn);
                                         //EXTRACT RETURN TYPE
@@ -145,7 +145,7 @@ public class RestCallExtraction {
                                     HTTP_METHOD_TYPE = extractHttpType(callTargetNode);
                                 }
                                 //TO-DO: In future try to get what type of HTTP Entity.
-                                if ((RETURN_TYPE == null || RETURN_TYPE.contains("edu.fudan.common.util.Response")) && HTTP_METHOD_TYPE.equals("EXCHANGE")){
+                                if (RETURN_TYPE == null || RETURN_TYPE.contains("edu.fudan.common.util.Response")){
                                     RETURN_TYPE = RestCallExtraction.HTTP_ENTITY_PACKAGE;
                                 }
                                 System.out.println("PARENT METHOD = " + PARENT_METHOD);
