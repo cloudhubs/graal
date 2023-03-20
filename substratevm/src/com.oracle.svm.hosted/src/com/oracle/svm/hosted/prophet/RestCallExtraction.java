@@ -69,9 +69,12 @@ public class RestCallExtraction {
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {
-                    // if (!method.getQualifiedName().contains("testCallWithURIVar") && !method.getQualifiedName().contains("testCallWithOutsideVar")){
+                    // if (!method.getQualifiedName().contains("getExams")){
                     //     continue;
                     // }
+                    if (!method.getQualifiedName().contains("addUser")){
+                        continue;
+                    }
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
                         if (node instanceof Invoke) {
@@ -81,15 +84,13 @@ public class RestCallExtraction {
                                 System.out.println("===========================================");
                                 System.out.println("Method qualified name: " + method.getQualifiedName());
                                 System.out.println("Target method qualified name: " + targetMethod.getQualifiedName());
-                                // Parameter[] parameters = targetMethod.getParameters();
-                                // for(jdk.vm.ci.meta.ResolvedJavaMethod.Parameter a : parameters){
-                                //     System.out.println("\tparameter = " + a + ", getName = " + a.getName() + ", getparameterizedType().getTypeName() = " + a.getParameterizedType().getTypeName());
-                                // }
+                                Parameter[] parameters = targetMethod.getParameters();
+
                                 // System.out.println("targetMethod.getWrapped().getName() = " + targetMethod.getWrapped().getName() + ", just the getWrapped() = " + targetMethod.getWrapped());
                                 // System.out.println("targetMethod.getSignature() = " + targetMethod.getSignature() + ", getSignature().getReturnType() = " + targetMethod.getSignature().getReturnType(targetMethod.getType()));
                                 String HTTP_METHOD_TYPE = parseHttpMethodType(targetMethod.getQualifiedName());
 
-                                String PARENT_METHOD = cleanParentMethod(method.getQualifiedName());                     
+                                String PARENT_METHOD = cleanParentMethod(method.getQualifiedName());                   
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 // System.out.println("callTargetNode = " + callTargetNode);
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
@@ -132,21 +133,8 @@ public class RestCallExtraction {
                                         else{
                                             DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
                                             URI += dsoc.getObject().toString();  
-                                        }
-                                        
+                                        }        
                                     }
-
-                                    // else if (v instanceof AllocatedObjectNode){
-                                    //     System.out.println("Node is ALLOCATED_OBJECT_NODE");
-                                    //     System.out.println("\tinputs: " + v.inputs());
-                                    //     for (Node n : v.inputs()){
-                                    //         System.out.println("\tinput = " + n);
-                                    //     }
-                                    //     for (Node u : v.usages()){
-                                    //         System.out.println("\tusage = " + u);
-                                    //     }
-                                    // }
-
                                 } 
                                 //RestTemplate is an EXCHANGE, get specific HTTP type
                                 if (HTTP_METHOD_TYPE != null && HTTP_METHOD_TYPE.equals("EXCHANGE")){
@@ -243,10 +231,7 @@ public class RestCallExtraction {
             if (arg instanceof LoadFieldNode){
                 // System.out.println("arg is a LOAD_FIELD_NODE, arg = " + arg);
                 LoadFieldNode loadfieldNode = (LoadFieldNode) arg;
-                // System.out.println("loadfield noad = " + loadfieldNode);
                 AnalysisField field = (AnalysisField) loadfieldNode.field();
-                // System.out.println("loadfield analysisfield = " + field);
-                // System.out.println("loadfield analysisfield getName = " + field.getName());
                 
                 for (java.lang.annotation.Annotation annotation : field.getAnnotations()) {
                     if (annotation.annotationType().getName().contains("Value")) {
@@ -269,7 +254,7 @@ public class RestCallExtraction {
             }
             else if (arg instanceof PiNode){
                 // System.out.println(arg + " is a PiNode");
-                // System.out.println(((PiNode)arg).inputs());
+                // System.out.println("pi node inputs: " + ((PiNode)arg).inputs());
                 for (Node inputNode : ((PiNode)arg).inputs()){
                     if (inputNode instanceof Invoke){
                         // System.out.println(inputNode + " is Invoke");
@@ -282,10 +267,13 @@ public class RestCallExtraction {
                 //PrimitiveConstants can not be converted to DirectSubstrateObjectConstant
                 if (!(cn.getValue() instanceof PrimitiveConstant)){
                     DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
-                    // System.out.println("DSOC = " + dsoc.getObject().toString());
                     uriPortion = uriPortion + dsoc.getObject().toString();
                 }
 
+            }
+            else if (arg instanceof Invoke){
+                // System.out.println("arg = " + arg + " && is an instance of invoke");
+                uriPortion = uriPortion + extractURI(((Invoke)arg).callTarget(), propMap);
             }
             else{
                 for (Node n : inputsList){
