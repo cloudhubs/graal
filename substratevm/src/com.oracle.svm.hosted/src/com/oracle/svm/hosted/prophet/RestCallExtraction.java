@@ -63,13 +63,17 @@ public class RestCallExtraction {
         'source' can be obtained in RAD repo in the RadSourceService file in generateRestEntityContext method where getSourceFiles is
     */
     private final static String REST_TEMPLATE_PACKAGE = "org.springframework.web.client.RestTemplate.";
+    private final static String HTTP_ENTITY_PACKAGE = "org.springframework.http.HttpEntity";
 
     public static void extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {
-                    // if (!method.getQualifiedName().contains("testCallWithURIVar") && !method.getQualifiedName().contains("testCallWithOutsideVar")){
+                    // if (!method.getQualifiedName().contains("getExams")){
+                    //     continue;
+                    // }
+                    // if (!method.getQualifiedName().contains("updateUser")){
                     //     continue;
                     // }
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
@@ -81,15 +85,13 @@ public class RestCallExtraction {
                                 System.out.println("===========================================");
                                 System.out.println("Method qualified name: " + method.getQualifiedName());
                                 System.out.println("Target method qualified name: " + targetMethod.getQualifiedName());
-                                // Parameter[] parameters = targetMethod.getParameters();
-                                // for(jdk.vm.ci.meta.ResolvedJavaMethod.Parameter a : parameters){
-                                //     System.out.println("\tparameter = " + a + ", getName = " + a.getName() + ", getparameterizedType().getTypeName() = " + a.getParameterizedType().getTypeName());
-                                // }
+                                Parameter[] parameters = targetMethod.getParameters();
+
                                 // System.out.println("targetMethod.getWrapped().getName() = " + targetMethod.getWrapped().getName() + ", just the getWrapped() = " + targetMethod.getWrapped());
                                 // System.out.println("targetMethod.getSignature() = " + targetMethod.getSignature() + ", getSignature().getReturnType() = " + targetMethod.getSignature().getReturnType(targetMethod.getType()));
                                 String HTTP_METHOD_TYPE = parseHttpMethodType(targetMethod.getQualifiedName());
 
-                                String PARENT_METHOD = cleanParentMethod(method.getQualifiedName());                     
+                                String PARENT_METHOD = cleanParentMethod(method.getQualifiedName());                   
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 // System.out.println("callTargetNode = " + callTargetNode);
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
@@ -105,9 +107,10 @@ public class RestCallExtraction {
                                     }
                                     //NOTE: need to find definitive way of knowing if node holds return value
                                     //return type seems to be in substratemethod prior to a invoke of restTemplate.whatevercall 
-                                    else if (v instanceof ConstantNode){
+                                    else if (v instanceof ConstantNode && !v.isNullConstant() && !v.isIllegalConstant()){
                                         ConstantNode cn = (ConstantNode)v;
-                                        //RETURN TYPE
+                                        // System.out.println("CONSTANT NODE = " + cn);
+                                        //EXTRACT RETURN TYPE
                                         if (cn.toString().contains("com.oracle.svm.core.hub.DynamicHub")){
                                             Boolean returnTypeLikely = false;
                                             for (Node cnUsage : cn.usages()){
@@ -130,29 +133,21 @@ public class RestCallExtraction {
                                         }
                                         //MIGHT be URI or portion of URI
                                         else{
+
                                             DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
                                             URI += dsoc.getObject().toString();  
-                                        }
-                                        
+                                        } 
+     
                                     }
-
-                                    // else if (v instanceof AllocatedObjectNode){
-                                    //     System.out.println("Node is ALLOCATED_OBJECT_NODE");
-                                    //     System.out.println("\tinputs: " + v.inputs());
-                                    //     for (Node n : v.inputs()){
-                                    //         System.out.println("\tinput = " + n);
-                                    //     }
-                                    //     for (Node u : v.usages()){
-                                    //         System.out.println("\tusage = " + u);
-                                    //     }
-                                    // }
-
                                 } 
                                 //RestTemplate is an EXCHANGE, get specific HTTP type
                                 if (HTTP_METHOD_TYPE != null && HTTP_METHOD_TYPE.equals("EXCHANGE")){
                                     HTTP_METHOD_TYPE = extractHttpType(callTargetNode);
                                 }
-
+                                //TO-DO: In future try to get what type of HTTP Entity.
+                                if (RETURN_TYPE == null || RETURN_TYPE.contains("edu.fudan.common.util.Response")){
+                                    RETURN_TYPE = RestCallExtraction.HTTP_ENTITY_PACKAGE;
+                                }
                                 System.out.println("PARENT METHOD = " + PARENT_METHOD);
                                 System.out.println("RETURN TYPE = " + RETURN_TYPE);
                                 System.out.println("HTTP_METHOD_TYPE = " + HTTP_METHOD_TYPE);
@@ -243,10 +238,7 @@ public class RestCallExtraction {
             if (arg instanceof LoadFieldNode){
                 // System.out.println("arg is a LOAD_FIELD_NODE, arg = " + arg);
                 LoadFieldNode loadfieldNode = (LoadFieldNode) arg;
-                // System.out.println("loadfield noad = " + loadfieldNode);
                 AnalysisField field = (AnalysisField) loadfieldNode.field();
-                // System.out.println("loadfield analysisfield = " + field);
-                // System.out.println("loadfield analysisfield getName = " + field.getName());
                 
                 for (java.lang.annotation.Annotation annotation : field.getAnnotations()) {
                     if (annotation.annotationType().getName().contains("Value")) {
@@ -269,7 +261,7 @@ public class RestCallExtraction {
             }
             else if (arg instanceof PiNode){
                 // System.out.println(arg + " is a PiNode");
-                // System.out.println(((PiNode)arg).inputs());
+                // System.out.println("pi node inputs: " + ((PiNode)arg).inputs());
                 for (Node inputNode : ((PiNode)arg).inputs()){
                     if (inputNode instanceof Invoke){
                         // System.out.println(inputNode + " is Invoke");
@@ -282,10 +274,13 @@ public class RestCallExtraction {
                 //PrimitiveConstants can not be converted to DirectSubstrateObjectConstant
                 if (!(cn.getValue() instanceof PrimitiveConstant)){
                     DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
-                    // System.out.println("DSOC = " + dsoc.getObject().toString());
                     uriPortion = uriPortion + dsoc.getObject().toString();
                 }
 
+            }
+            else if (arg instanceof Invoke){
+                // System.out.println("arg = " + arg + " && is an instance of invoke");
+                uriPortion = uriPortion + extractURI(((Invoke)arg).callTarget(), propMap);
             }
             else{
                 for (Node n : inputsList){
