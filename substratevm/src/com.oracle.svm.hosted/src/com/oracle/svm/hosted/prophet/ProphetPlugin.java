@@ -40,6 +40,9 @@ import java.util.Set;
 import java.util.Map;
 import java.util.Optional;
 
+import com.oracle.svm.hosted.prophet.model.Endpoint;
+import com.oracle.svm.hosted.prophet.model.RestCall;
+
 import com.oracle.svm.hosted.prophet.Logger;
 
 public class ProphetPlugin {
@@ -100,7 +103,7 @@ public class ProphetPlugin {
 
         var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, modulename);
         Module module = plugin.doRun();
-
+        System.out.println("MODULE = " + module);
         dumpModule(module);
     }
 
@@ -136,15 +139,20 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
+        List<RestCall> restCallList = new ArrayList<>();
+        List<Endpoint> endpointList = new ArrayList<>();
+
         logger.info("Amount of classes = " + classes.size());
         for (Class<?> clazz : classes) {
             Optional<Entity> ent = EntityExtraction.extractClassEntityCalls(clazz, metaAccess, bb);
             ent.ifPresent(entities::add);
-            RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap);
+            List<RestCall> restCalls = RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap);
+            restCallList.addAll(restCalls);
             //ENDPOINT EXTRACTION HERE
-            EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
+            List<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
+            endpointList.addAll(endpoints);
         }
-        return new Module(new Name(modulename), entities, null, null);
+        return new Module(new Name(modulename), entities, restCallList, endpointList);
     }
 
     private List<Class<?>> filterRelevantClasses() {
