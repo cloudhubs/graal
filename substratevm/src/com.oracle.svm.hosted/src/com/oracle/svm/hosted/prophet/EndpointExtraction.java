@@ -21,8 +21,14 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
-
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import org.graalvm.polyglot.*;
+import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
+import org.graalvm.compiler.nodes.ConstantNode;
+import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import java.lang.reflect.Method;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -33,6 +39,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import javax.xml.transform.Result;
+
+import java.util.Collection;
 
 public class EndpointExtraction {
 
@@ -48,8 +58,7 @@ public class EndpointExtraction {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
-                try {
-
+                try {      
                     // What I will need to extract: String httpMethod, String parentMethod, String arguments, String returnType
                     Annotation[] annotations = method.getAnnotations();
                     for (Annotation annotation : annotations) {
@@ -60,19 +69,41 @@ public class EndpointExtraction {
                             //following the rad-source format for the parentMethod JSON need to parse before the first parenthesis
                             String parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
                             
-                            String httpMethod = null, path = null;
+                            String httpMethod = null;
                             if (annotation.annotationType().getName().startsWith(PUT_MAPPING)) {
-                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
                                 httpMethod = "PUT";
                             } else if (annotation.annotationType().getName().startsWith(GET_MAPPING)) {
-                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
                                 httpMethod = "GET";
                             } else if (annotation.annotationType().getName().startsWith(POST_MAPPING)) {
-                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
                                 httpMethod = "POST";
                             } else if (annotation.annotationType().getName().startsWith(DELETE_MAPPING)) {
-                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
                                 httpMethod = "DELETE";
+                            }
+
+                            //try to get the path (might be null)
+                             //Example of a path to parse: @org.springframework.web.bind.annotation.DeleteMapping(path={}, headers={}, name="", produces={}, 
+                             //params={}, value={"/{userId}"}, consumes={})
+                            String path = null;
+                            boolean hasPath = false;
+                            try{
+                                System.out.println("TESTING: " + annotation.toString());
+                                // path is optional, thus attempting to get it and return null if so.
+                                path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
+                                hasPath = true;
+                            }catch(ArrayIndexOutOfBoundsException ex){
+                                hasPath = false;
+                             }
+
+                             //Have to also consider the "path" JSON attribute of the annotation, Example:
+                             //@org.springframework.web.bind.annotation.GetMapping(path={"/welcome"}, headers={}, name="", produces={}, params={}, 
+                             //value={}, consumes={})
+                             //This is with the assumption that a value == path when within an annotation!
+                             if(!hasPath){
+                                try{
+                                    path = ((String[]) annotation.annotationType().getMethod("path").invoke(annotation))[0];
+                                }catch(ArrayIndexOutOfBoundsException ex){
+
+                                }
                             }
 
                             ArrayList<String> parameterAnnotationsList = extractArguments(method);
@@ -83,11 +114,16 @@ public class EndpointExtraction {
                                 System.out.println("argument: " + value);
                             }
 
-                            // Class<?>[] returnTypes = (Class<?>[]) annotation.getClass().getDeclaredMethod("value").invoke(annotation);
-                            // for (Class<?> returnType : returnTypes) {
-                            //     System.out.println("Return type: " + returnType.getName());
-                            // }
-                            System.out.println(method.toString());
+                            String returnTypeResult = extractReturnType(method);
+                            boolean returnTypeCollection = false;
+                            if(returnTypeResult.startsWith("[L") && isCollection(returnTypeResult)){
+                                returnTypeCollection = true;
+                                returnTypeResult = returnTypeResult.substring(2);
+                            }else{
+                                returnTypeCollection = isCollection(returnTypeResult);
+                            }
+                            System.out.println("Return type: " + returnTypeResult);
+                            System.out.println("Is Collection: " + returnTypeCollection);
 
                             System.out.println("============");
                             //Special case for request mapping 
@@ -111,13 +147,22 @@ public class EndpointExtraction {
                             System.out.println("HTTP Method: " + httpMethod);
                             System.out.println("Path: " + path);
                             System.out.println("parentMethod: " + parentMethod);
+                            
                             for(String value : parameterAnnotationsList){
                                 System.out.println("argument: " + value);
                             }
-                            
-                       
-                            //System.out.println(method.getSignature());
-                            
+                    
+                            String returnTypeResult = extractReturnType(method);
+                            boolean returnTypeCollection = false;
+                            if(returnTypeResult.startsWith("[L") && isCollection(returnTypeResult)){
+                                returnTypeCollection = true;
+                                returnTypeResult = returnTypeResult.substring(2);
+                            }else{
+                                returnTypeCollection = isCollection(returnTypeResult);
+                            }
+                            System.out.println("Return type: " + returnTypeResult);
+                            System.out.println("Is Collection: " + returnTypeCollection);
+
                             System.out.println("============");
                         }
                         
@@ -159,6 +204,62 @@ public class EndpointExtraction {
         }
     }
 
+    private static boolean isCollection(String returnType){
+        if (returnType == null || returnType.equals("null")){
+            return false;
+        }
+        //graal api indicates collections in return type with "class [L" OR
+        return returnType.startsWith("[L") || returnType.matches(".*[<].*[>]");
+    }
+
+    /**
+     * Method extracts and cleans the return type value of a controller method (based on a collection or object/primitive data type)
+     * @param method an AnalysisMethod
+     * @return the method's return type as a string value
+     */
+    public static String extractReturnType(AnalysisMethod method){
+        Method javaMethod = (Method) method.getJavaMethod();
+        Type returnType = javaMethod.getGenericReturnType();
+
+        //checking if return type is a collection
+        if(returnType instanceof ParameterizedType) {
+            ParameterizedType type = (ParameterizedType) returnType;
+            Type[] typeArgs = type.getActualTypeArguments();
+            Class<?> collectionType = (Class<?>) type.getRawType();
+            Class<?> elementType = (Class<?>) typeArgs[0];
+
+
+            //objective: convert interface java.util.List -> java.util.List
+            //double checking that it is "interface" portion removed (and not something else)
+            if(collectionType.toString().substring(0,9).equalsIgnoreCase("interface")){
+                String result = collectionType.toString().substring(10);
+                result = result + "<" + elementType.toString().substring(6) + ">";
+                return result;
+                //System.out.println("TESTING PARSING: " + result);
+            }else {
+                //TODO: need to handle Set, or other collection times (where this will break)
+                return collectionType.toString() + "<" + elementType.toString() + ">";
+            }
+            // }else if(collectionType.toString().substring(0,3).equalsIgnoreCase("set")){
+            //     //handle the case of a set:
+
+            //     String result = collectionType.toString().substring(4);
+            //     result = result + "<" + elementType.toString().substring(6) + ">";
+            //     return result;
+            // }
+
+            //System.out.println("Collection: " + collectionType);
+            //System.out.println("Element: " + elementType);
+        }else {
+            //case of just a non-collection (object or primitive value) returned:
+            if(returnType.toString().substring(0,5).equalsIgnoreCase("class")){
+                return returnType.toString().substring(6);
+            }else{
+                return returnType.toString();
+            }
+            //System.out.println("Return Type: " + returnType);
+        }
+    }
 
     /* Helper function to extract arguments from a method */
     public static ArrayList<String> extractArguments(AnalysisMethod method) {
