@@ -63,6 +63,7 @@ public class RestCallExtraction {
         'source' can be obtained in RAD repo in the RadSourceService file in generateRestEntityContext method where getSourceFiles is
     */
     private final static String REST_TEMPLATE_PACKAGE = "org.springframework.web.client.RestTemplate.";
+    private final static String HTTP_ENTITY_PACKAGE = "org.springframework.http.HttpEntity";
 
     public static void extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
@@ -72,9 +73,9 @@ public class RestCallExtraction {
                     // if (!method.getQualifiedName().contains("getExams")){
                     //     continue;
                     // }
-                    if (!method.getQualifiedName().contains("addUser")){
-                        continue;
-                    }
+                    // if (!method.getQualifiedName().contains("updateUser")){
+                    //     continue;
+                    // }
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
                         if (node instanceof Invoke) {
@@ -108,7 +109,8 @@ public class RestCallExtraction {
                                     //return type seems to be in substratemethod prior to a invoke of restTemplate.whatevercall 
                                     else if (v instanceof ConstantNode){
                                         ConstantNode cn = (ConstantNode)v;
-                                        //RETURN TYPE
+                                        // System.out.println("CONSTANT NODE = " + cn);
+                                        //EXTRACT RETURN TYPE
                                         if (cn.toString().contains("com.oracle.svm.core.hub.DynamicHub")){
                                             Boolean returnTypeLikely = false;
                                             for (Node cnUsage : cn.usages()){
@@ -131,16 +133,21 @@ public class RestCallExtraction {
                                         }
                                         //MIGHT be URI or portion of URI
                                         else{
+
                                             DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
                                             URI += dsoc.getObject().toString();  
-                                        }        
+                                        } 
+     
                                     }
                                 } 
                                 //RestTemplate is an EXCHANGE, get specific HTTP type
                                 if (HTTP_METHOD_TYPE != null && HTTP_METHOD_TYPE.equals("EXCHANGE")){
                                     HTTP_METHOD_TYPE = extractHttpType(callTargetNode);
                                 }
-
+                                //TO-DO: In future try to get what type of HTTP Entity.
+                                if ((RETURN_TYPE == null || RETURN_TYPE.contains("edu.fudan.common.util.Response")) && HTTP_METHOD_TYPE.equals("EXCHANGE")){
+                                    RETURN_TYPE = RestCallExtraction.HTTP_ENTITY_PACKAGE;
+                                }
                                 System.out.println("PARENT METHOD = " + PARENT_METHOD);
                                 System.out.println("RETURN TYPE = " + RETURN_TYPE);
                                 System.out.println("HTTP_METHOD_TYPE = " + HTTP_METHOD_TYPE);
