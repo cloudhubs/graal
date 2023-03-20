@@ -56,7 +56,7 @@ public class EndpointExtraction {
     private static final Set<String> controllerAnnotationNames = new HashSet<>(Arrays.asList("GetMapping", "PutMapping", "DeleteMapping", "PostMapping"));
     public static List<Endpoint> extractEndpoints(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
-        List<Endpoint> endpoints = new List<Endpoint>();
+        List<Endpoint> endpoints = new ArrayList<Endpoint>();
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {      

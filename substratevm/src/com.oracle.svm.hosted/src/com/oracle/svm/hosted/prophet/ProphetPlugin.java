@@ -40,6 +40,9 @@ import java.util.Set;
 import java.util.Map;
 import java.util.Optional;
 
+import com.oracle.svm.hosted.prophet.model.Endpoint;
+import com.oracle.svm.hosted.prophet.model.RestCall;
+
 import com.oracle.svm.hosted.prophet.Logger;
 
 public class ProphetPlugin {
@@ -100,7 +103,7 @@ public class ProphetPlugin {
 
         var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, modulename);
         Module module = plugin.doRun();
-
+        System.out.println("MODULE = " + module);
         dumpModule(module);
     }
 

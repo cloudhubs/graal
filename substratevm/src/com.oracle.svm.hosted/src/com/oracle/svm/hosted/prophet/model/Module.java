@@ -17,7 +17,14 @@ public class Module {
         this.restCalls = restCalls;
         this.endpoints = endpoints;
     }
-
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Module{ name= ").append(name).append(", \nentities= ").append(entities)
+                .append(", \nrestCalls = ").append(restCalls).append(", \nendpoints =" ).append(endpoints)
+                .append('}');
+        return sb.toString();
+    }
     public Name getName() {
         return name;
     }
@@ -51,4 +58,5 @@ public class Module {
     public void setEndpoints(List<Endpoint> endpoints) {
         this.endpoints = endpoints;
     }
+
 }
