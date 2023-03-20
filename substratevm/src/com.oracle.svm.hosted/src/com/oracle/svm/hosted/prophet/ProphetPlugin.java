@@ -145,7 +145,7 @@ public class ProphetPlugin {
             ent.ifPresent(entities::add);
             RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap);
             //ENDPOINT EXTRACTION HERE
-
+            EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
         }
         return new Module(new Name(modulename), entities, null, null);
     }
