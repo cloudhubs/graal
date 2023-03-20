@@ -12,6 +12,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,23 +40,11 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import com.oracle.svm.hosted.prophet.model.Entity;
+import com.oracle.svm.hosted.prophet.model.RestCall;
+
 import java.util.Optional;
 
 public class RestCallExtraction {
-    /*
-     * \
-     * EXAMPLE FORMAT FOR REST CALLS
-     * "restCalls": [
-     * {
-     * "msRoot": "C:\\seer-lab\\cil-tms\\tms-cms",
-     * "source":
-     * "C:\\seer-lab\\cil-tms\\tms-cms\\src\\main\\java\\edu\\baylor\\ecs\\cms\\service\\EmsService.java",
-     * "httpMethod": "POST",
-     * "parentMethod": "edu.baylor.ecs.cms.service.EmsService.createExam",
-     * "returnType": "edu.baylor.ecs.cms.dto.ExamDto",
-     * "collection": false
-     * },
-     */
 
      /*
         NOTE: 
@@ -64,8 +53,9 @@ public class RestCallExtraction {
     */
     private final static String REST_TEMPLATE_PACKAGE = "org.springframework.web.client.RestTemplate.";
     private final static String HTTP_ENTITY_PACKAGE = "org.springframework.http.HttpEntity";
+    private static List<RestCall> restCalls = new ArrayList<>();
 
-    public static void extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
+    public static List<RestCall> extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
@@ -73,18 +63,16 @@ public class RestCallExtraction {
                     // if (!method.getQualifiedName().contains("getExams")){
                     //     continue;
                     // }
-                    // if (!method.getQualifiedName().contains("updateUser")){
-                    //     continue;
-                    // }
+
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
                     for (Node node : decodedGraph.getNodes()) {
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
                             if (targetMethod.getQualifiedName().startsWith(REST_TEMPLATE_PACKAGE)) {
-                                System.out.println("===========================================");
-                                System.out.println("Method qualified name: " + method.getQualifiedName());
-                                System.out.println("Target method qualified name: " + targetMethod.getQualifiedName());
+                                // System.out.println("===========================================");
+                                // System.out.println("Method qualified name: " + method.getQualifiedName());
+                                // System.out.println("Target method qualified name: " + targetMethod.getQualifiedName());
                                 Parameter[] parameters = targetMethod.getParameters();
 
                                 // System.out.println("targetMethod.getWrapped().getName() = " + targetMethod.getWrapped().getName() + ", just the getWrapped() = " + targetMethod.getWrapped());
@@ -148,12 +136,13 @@ public class RestCallExtraction {
                                 if (RETURN_TYPE == null || RETURN_TYPE.contains("edu.fudan.common.util.Response")){
                                     RETURN_TYPE = RestCallExtraction.HTTP_ENTITY_PACKAGE;
                                 }
-                                System.out.println("PARENT METHOD = " + PARENT_METHOD);
-                                System.out.println("RETURN TYPE = " + RETURN_TYPE);
-                                System.out.println("HTTP_METHOD_TYPE = " + HTTP_METHOD_TYPE);
-                                System.out.println("URI = " + URI);
-                                System.out.println("IS COLLECTION = " + callIsCollection);
-                                System.out.println("===========================================");
+                                restCalls.add(new RestCall(HTTP_METHOD_TYPE, PARENT_METHOD, RETURN_TYPE, URI, callIsCollection, clazz.getCanonicalName()));
+                                // System.out.println("PARENT METHOD = " + PARENT_METHOD);
+                                // System.out.println("RETURN TYPE = " + RETURN_TYPE);
+                                // System.out.println("HTTP_METHOD_TYPE = " + HTTP_METHOD_TYPE);
+                                // System.out.println("URI = " + URI);
+                                // System.out.println("IS COLLECTION = " + callIsCollection);
+                                // System.out.println("===========================================");
                             }
                         }
                     }
@@ -164,6 +153,7 @@ public class RestCallExtraction {
         } catch (Exception | LinkageError ex) {
             ex.printStackTrace();
         }
+        return restCalls;
     }
 
     private static String cleanReturnType(String returnType){

@@ -80,9 +80,6 @@ public class ProphetPlugin {
         @Option(help = "Try to extract rest calls.")//
         public static final HostedOptionKey<Boolean> ProphetRest = new HostedOptionKey<>(false);
 
-//        @Option(help = "Try to extract Entities")
-//        public static final HostedOptionKey<Boolean> ProphetEntities = new HostedOptionKey<>(false);
-
         @Option(help = "Base package to analyse.")//
         public static final HostedOptionKey<String> ProphetBasePackage = new HostedOptionKey<>("unknown");
 

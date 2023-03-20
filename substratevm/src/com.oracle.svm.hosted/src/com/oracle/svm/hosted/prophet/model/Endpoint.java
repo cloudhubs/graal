@@ -10,9 +10,10 @@ public class Endpoint {
     private String returnType;
     private String path;
     private boolean isCollection;
+    private String endpointInClassName;
 
     public Endpoint(String httpMethod, String parentMethod, List<String> args, 
-                    String returnType, String path, Boolean isCollection) {
+                    String returnType, String path, Boolean isCollection, String endpointInClassName) {
 
         this.httpMethod = httpMethod;
         this.parentMethod = parentMethod;
@@ -20,12 +21,16 @@ public class Endpoint {
         this.returnType = returnType;
         this.path = path;
         this.isCollection = isCollection;
+        this.endpointInClassName = endpointInClassName;
+
     }
     // Getter methods
     public String getHttpMethod() {
         return httpMethod;
     }
-
+    public String getEndpointInClassName() {
+        return this.endpointInClassName;
+    }
     public String getParentMethod() {
         return parentMethod;
     }
@@ -50,7 +55,9 @@ public class Endpoint {
     public void setHttpMethod(String httpMethod) {
         this.httpMethod = httpMethod;
     }
-
+    public void setEndpointInClassName(String className) {
+        this.endpointInClassName = className;
+    }
     public void setParentMethod(String parentMethod) {
         this.parentMethod = parentMethod;
     }
