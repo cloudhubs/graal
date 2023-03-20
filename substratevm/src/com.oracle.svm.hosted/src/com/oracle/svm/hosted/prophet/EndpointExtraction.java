@@ -109,12 +109,12 @@ public class EndpointExtraction {
                             }
 
                             ArrayList<String> parameterAnnotationsList = extractArguments(method);
-                            System.out.println("HTTP Method: " + httpMethod);
-                            System.out.println("Path: " + path);
-                            System.out.println("parentMethod: " + parentMethod);
-                            for(String value : parameterAnnotationsList){
-                                System.out.println("argument: " + value);
-                            }
+                            // System.out.println("HTTP Method: " + httpMethod);
+                            // System.out.println("Path: " + path);
+                            // System.out.println("parentMethod: " + parentMethod);
+                            // for(String value : parameterAnnotationsList){
+                            //     System.out.println("argument: " + value);
+                            // }
 
                             String returnTypeResult = extractReturnType(method);
                             boolean returnTypeCollection = false;
@@ -124,10 +124,10 @@ public class EndpointExtraction {
                             }else{
                                 returnTypeCollection = isCollection(returnTypeResult);
                             }
-                            System.out.println("Return type: " + returnTypeResult);
-                            System.out.println("Is Collection: " + returnTypeCollection);
+                            //System.out.println("Return type: " + returnTypeResult);
+                            //System.out.println("Is Collection: " + returnTypeCollection);
 
-                            System.out.println("============");
+                            //System.out.println("============");
                             //Special case for request mapping 
                         }else if (annotation.annotationType().getSimpleName().equals("RequestMapping")){
                             
@@ -146,13 +146,12 @@ public class EndpointExtraction {
                             }
 
                             ArrayList<String> parameterAnnotationsList = extractArguments(method);
-                            System.out.println("HTTP Method: " + httpMethod);
-                            System.out.println("Path: " + path);
-                            System.out.println("parentMethod: " + parentMethod);
-                            
-                            for(String value : parameterAnnotationsList){
-                                System.out.println("argument: " + value);
-                            }
+                            //System.out.println("HTTP Method: " + httpMethod);
+                            //System.out.println("Path: " + path);
+                            //System.out.println("parentMethod: " + parentMethod);
+                            //for(String value : parameterAnnotationsList){
+                                //System.out.println("argument: " + value);
+                            //}
                     
                             String returnTypeResult = extractReturnType(method);
                             boolean returnTypeCollection = false;
@@ -162,13 +161,13 @@ public class EndpointExtraction {
                             }else{
                                 returnTypeCollection = isCollection(returnTypeResult);
                             }
-                            System.out.println("Return type: " + returnTypeResult);
-                            System.out.println("Is Collection: " + returnTypeCollection);
+                            //System.out.println("Return type: " + returnTypeResult);
+                            //System.out.println("Is Collection: " + returnTypeCollection);
 
-                            System.out.println("============");
+                            //System.out.println("============");
                         }
                         
-                        endpoints.add(new Endpoint(null, null, null, null, null, null, clazz.getCanonicalName()));
+                        endpoints.add(new Endpoint(null, null, null, null, null, true, clazz.getCanonicalName()));
                     }
 
                     // StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
