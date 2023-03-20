@@ -19,7 +19,13 @@ public class RestCall {
         this.isCollection = isCollection;
         this.restCallInClassName = restCallInClassName;
     }
-
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(restCallInClassName).append(parentMethod).append(", ").append(uri)
+            .append(", ").append(returnType).append(", ").append(isCollection);
+        return sb.toString();
+    }
     // Getter methods
     public String getHttpMethod() {
         return httpMethod;
