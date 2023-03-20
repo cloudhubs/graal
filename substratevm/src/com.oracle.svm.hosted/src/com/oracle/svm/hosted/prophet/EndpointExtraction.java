@@ -57,7 +57,7 @@ public class EndpointExtraction {
     private static final Set<String> controllerAnnotationNames = new HashSet<>(Arrays.asList("GetMapping", "PutMapping", "DeleteMapping", "PostMapping"));
     public static List<Endpoint> extractEndpoints(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
-        List<Endpoint> endpoints = new List<Endpoint>();
+        List<Endpoint> endpoints = new ArrayList<Endpoint>();
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {      
@@ -65,13 +65,14 @@ public class EndpointExtraction {
                     Annotation[] annotations = method.getAnnotations();
                     for (Annotation annotation : annotations) {
                         
+                        ArrayList<String> parameterAnnotationsList = new ArrayList<>();
+                        String httpMethod = null, parentMethod = null, returnTypeResult = null, path = null;
+                        boolean returnTypeCollection = false;
                         if (controllerAnnotationNames.contains(annotation.annotationType().getSimpleName())) {
                             
                              //Code to get the parentMethod attribute:
                             //following the rad-source format for the parentMethod JSON need to parse before the first parenthesis
-                            String parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
-                            
-                            String httpMethod = null;
+                            parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
                             if (annotation.annotationType().getName().startsWith(PUT_MAPPING)) {
                                 httpMethod = "PUT";
                             } else if (annotation.annotationType().getName().startsWith(GET_MAPPING)) {
@@ -85,7 +86,7 @@ public class EndpointExtraction {
                             //try to get the path (might be null)
                              //Example of a path to parse: @org.springframework.web.bind.annotation.DeleteMapping(path={}, headers={}, name="", produces={}, 
                              //params={}, value={"/{userId}"}, consumes={})
-                            String path = null;
+                            
                             boolean hasPath = false;
                             try{
                                 //System.out.println("Annotation object: " + annotation.toString());
@@ -108,7 +109,7 @@ public class EndpointExtraction {
                                 }
                             }
 
-                            ArrayList<String> parameterAnnotationsList = extractArguments(method);
+                            parameterAnnotationsList = extractArguments(method);
                             // System.out.println("HTTP Method: " + httpMethod);
                             // System.out.println("Path: " + path);
                             // System.out.println("parentMethod: " + parentMethod);
@@ -116,8 +117,7 @@ public class EndpointExtraction {
                             //     System.out.println("argument: " + value);
                             // }
 
-                            String returnTypeResult = extractReturnType(method);
-                            boolean returnTypeCollection = false;
+                            returnTypeResult = extractReturnType(method);
                             if(returnTypeResult.startsWith("[L") && isCollection(returnTypeResult)){
                                 returnTypeCollection = true;
                                 returnTypeResult = returnTypeResult.substring(2);
@@ -132,20 +132,19 @@ public class EndpointExtraction {
                         }else if (annotation.annotationType().getSimpleName().equals("RequestMapping")){
                             
                             //Code to get the parentMethod attribute:
-                            String parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
+                            parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
 
 
                             String[] pathArr = (String[]) annotation.annotationType().getMethod("path").invoke(annotation);
-                            String path = pathArr.length > 0 ? pathArr[0] : null;
+                            path = pathArr.length > 0 ? pathArr[0] : null;
 
                             //cant use a string[] because of ClassCastException 
                             Object[] methods = (Object[]) annotation.annotationType().getMethod("method").invoke(annotation);
-                            String httpMethod = null;
                             if (methods.length > 0 && methods != null) {
                                 httpMethod = methods[0].toString();
                             }
 
-                            ArrayList<String> parameterAnnotationsList = extractArguments(method);
+                            parameterAnnotationsList = extractArguments(method);
                             //System.out.println("HTTP Method: " + httpMethod);
                             //System.out.println("Path: " + path);
                             //System.out.println("parentMethod: " + parentMethod);
@@ -153,8 +152,7 @@ public class EndpointExtraction {
                                 //System.out.println("argument: " + value);
                             //}
                     
-                            String returnTypeResult = extractReturnType(method);
-                            boolean returnTypeCollection = false;
+                            returnTypeResult = extractReturnType(method);
                             if(returnTypeResult.startsWith("[L") && isCollection(returnTypeResult)){
                                 returnTypeCollection = true;
                                 returnTypeResult = returnTypeResult.substring(2);
@@ -167,7 +165,7 @@ public class EndpointExtraction {
                             //System.out.println("============");
                         }
                         
-                        endpoints.add(new Endpoint(null, null, null, null, null, true, clazz.getCanonicalName()));
+                        endpoints.add(new Endpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName()));
                     }
 
                     // StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
@@ -204,6 +202,8 @@ public class EndpointExtraction {
         } catch (Exception | LinkageError ex) {
             ex.printStackTrace();
         }
+
+        return endpoints;
     }
 
     private static boolean isCollection(String returnType){
