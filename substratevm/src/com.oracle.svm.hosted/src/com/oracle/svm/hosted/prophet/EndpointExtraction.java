@@ -66,9 +66,9 @@ public class EndpointExtraction {
                         
                         ArrayList<String> parameterAnnotationsList = new ArrayList<>();
                         String httpMethod = null, parentMethod = null, returnTypeResult = null, path = null;
-                        boolean returnTypeCollection = false;
+                        boolean returnTypeCollection = false, isEndpoint = false;
                         if (controllerAnnotationNames.contains(annotation.annotationType().getSimpleName())) {
-                            
+                            isEndpoint = true;
                              //Code to get the parentMethod attribute:
                             //following the rad-source format for the parentMethod JSON need to parse before the first parenthesis
                             parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
@@ -109,13 +109,6 @@ public class EndpointExtraction {
                             }
 
                             parameterAnnotationsList = extractArguments(method);
-                            // System.out.println("HTTP Method: " + httpMethod);
-                            // System.out.println("Path: " + path);
-                            // System.out.println("parentMethod: " + parentMethod);
-                            // for(String value : parameterAnnotationsList){
-                            //     System.out.println("argument: " + value);
-                            // }
-
                             returnTypeResult = extractReturnType(method);
                             if(returnTypeResult.startsWith("[L") && isCollection(returnTypeResult)){
                                 returnTypeCollection = true;
@@ -123,16 +116,11 @@ public class EndpointExtraction {
                             }else{
                                 returnTypeCollection = isCollection(returnTypeResult);
                             }
-                            //System.out.println("Return type: " + returnTypeResult);
-                            //System.out.println("Is Collection: " + returnTypeCollection);
-
-                            //System.out.println("============");
                             //Special case for request mapping 
                         }else if (annotation.annotationType().getSimpleName().equals("RequestMapping")){
-                            
+                            isEndpoint = true;
                             //Code to get the parentMethod attribute:
                             parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
-
 
                             String[] pathArr = (String[]) annotation.annotationType().getMethod("path").invoke(annotation);
                             path = pathArr.length > 0 ? pathArr[0] : null;
@@ -143,14 +131,7 @@ public class EndpointExtraction {
                                 httpMethod = methods[0].toString();
                             }
 
-                            parameterAnnotationsList = extractArguments(method);
-                            //System.out.println("HTTP Method: " + httpMethod);
-                            //System.out.println("Path: " + path);
-                            //System.out.println("parentMethod: " + parentMethod);
-                            //for(String value : parameterAnnotationsList){
-                                //System.out.println("argument: " + value);
-                            //}
-                    
+                            parameterAnnotationsList = extractArguments(method); 
                             returnTypeResult = extractReturnType(method);
                             if(returnTypeResult.startsWith("[L") && isCollection(returnTypeResult)){
                                 returnTypeCollection = true;
@@ -158,13 +139,21 @@ public class EndpointExtraction {
                             }else{
                                 returnTypeCollection = isCollection(returnTypeResult);
                             }
-                            //System.out.println("Return type: " + returnTypeResult);
-                            //System.out.println("Is Collection: " + returnTypeCollection);
-
-                            //System.out.println("============");
                         }
                         
-                        endpoints.add(new Endpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName()));
+                        if(isEndpoint) {
+                            // System.out.println("============");
+                            // System.out.println("HTTP Method: " + httpMethod);
+                            // System.out.println("Path: " + path);
+                            // System.out.println("parentMethod: " + parentMethod);
+                            // for(String value : parameterAnnotationsList){
+                            //     System.out.println("argument: " + value);
+                            // }
+                            // System.out.println("Return type: " + returnTypeResult);
+                            // System.out.println("Is Collection: " + returnTypeCollection);
+                            // System.out.println("============");
+                            endpoints.add(new Endpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName()));
+                        }
                     }
 
                     // StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
