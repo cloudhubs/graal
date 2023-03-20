@@ -8,6 +8,7 @@ import com.oracle.graal.reachability.ReachabilityAnalysisMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.prophet.model.Endpoint;
 import com.oracle.svm.hosted.prophet.model.Entity;
 import com.oracle.svm.hosted.prophet.model.Field;
 import com.oracle.svm.hosted.prophet.model.Module;
@@ -54,8 +55,9 @@ public class EndpointExtraction {
 
     //annotations for controller to get endpoints
     private static final Set<String> controllerAnnotationNames = new HashSet<>(Arrays.asList("GetMapping", "PutMapping", "DeleteMapping", "PostMapping"));
-    public static void extractEndpoints(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
+    public static List<Endpoint> extractEndpoints(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
+        List<Endpoint> endpoints = new List<Endpoint>();
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {      
@@ -166,6 +168,7 @@ public class EndpointExtraction {
                             System.out.println("============");
                         }
                         
+                        endpoints.add(new Endpoint(null, null, null, null, null, null, clazz.getCanonicalName()));
                     }
 
                     // StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
