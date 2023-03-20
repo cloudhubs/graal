@@ -86,7 +86,7 @@ public class EndpointExtraction {
                             String path = null;
                             boolean hasPath = false;
                             try{
-                                System.out.println("TESTING: " + annotation.toString());
+                                //System.out.println("Annotation object: " + annotation.toString());
                                 // path is optional, thus attempting to get it and return null if so.
                                 path = ((String[]) annotation.annotationType().getMethod("value").invoke(annotation))[0];
                                 hasPath = true;
