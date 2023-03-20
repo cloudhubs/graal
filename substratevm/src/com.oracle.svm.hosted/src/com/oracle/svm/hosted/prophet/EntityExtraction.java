@@ -30,13 +30,34 @@ import com.oracle.svm.util.AnnotationWrapper;
 
 public class EntityExtraction {
 
-    private final static String ENTITY_PACKAGE = "@javax.persistence.";
+    private final static String JAVA_ENTITY_PACKAGE = "@javax.persistence.";
+
+    private final static String LOMBOK_ENTITY_PACKAGE = "@lombok.Data";
     private final static String PRIMITIVE_VALUE = "HotSpotResolvedPrimitiveType<";
 
     public static Optional<Entity> extractClassEntityCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
         Entity ent = null;
         HashMap<String, Field> fieldMap = new HashMap<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
+
+        System.out.println("name of class: " + clazz.getName());
+        System.out.println("\n");
+
+//        for (java.lang.reflect.Field f : analysisType.getAnnotationRoot().getClass().getFields()) {
+//            System.out.println(f.getName());
+//        }
+//
+//        System.out.println("==================");
+//        for (java.lang.reflect.Method m : analysisType.getAnnotationRoot().getClass().getMethods()) {
+//            System.out.println(m.getName() + "()");
+//        }
+//        System.out.println("==================");
+
+        System.out.println("annotations... ");
+        for (Annotation ann : ((HotSpotResolvedObjectTypeImpl)analysisType.getAnnotationRoot()).mirror().getDeclaredAnnotations()) {
+            System.out.println("\tANNot: " + ann.toString() + "\n");
+        }
+
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
                 
@@ -59,7 +80,7 @@ public class EntityExtraction {
 
                         for (Annotation ann : field.getWrapped().getAnnotations()) {
 
-                            if(ann.toString().startsWith(ENTITY_PACKAGE)){
+                            if(ann.toString().startsWith(JAVA_ENTITY_PACKAGE) || ann.toString().startsWith(LOMBOK_ENTITY_PACKAGE)){
                                 //Create new entity if it does not exist
                                 if (ent == null) {
                                     ent = new Entity(new Name(clazz.getSimpleName()));
@@ -68,12 +89,20 @@ public class EntityExtraction {
                                 com.oracle.svm.hosted.prophet.model.Annotation tempAnnot = new com.oracle.svm.hosted.prophet.model.Annotation();
                                 String annName = ann.toString();
 
-                                //String manipulation for annotation names
-                                if(annName.contains(ENTITY_PACKAGE)){
-                                    annName = annName.replace(ENTITY_PACKAGE, "");
+                                //String manipulation for java annotation names
+                                if(annName.contains(JAVA_ENTITY_PACKAGE)){
+                                    annName = annName.replace(JAVA_ENTITY_PACKAGE, "");
                                     annName = "@" + annName;
                                     annName = annName.substring(0, annName.indexOf("("));
                                 }
+
+                                //String manipulation for java annotation names
+                                if (annName.contains(LOMBOK_ENTITY_PACKAGE)) {
+                                    annName = annName.replace(LOMBOK_ENTITY_PACKAGE, "");
+                                    annName = "@" + annName;
+                                    annName = annName.substring(0, annName.indexOf("("));
+                                }
+
                                 tempAnnot.setName(annName);
 
                                 //Add it to the set
