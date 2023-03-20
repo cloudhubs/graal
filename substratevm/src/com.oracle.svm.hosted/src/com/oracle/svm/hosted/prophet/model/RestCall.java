@@ -1,28 +1,61 @@
 package com.oracle.svm.hosted.prophet.model;
-/*\
- *  EXAMPLE FORMAT FOR REST CALLS
- *  "restCalls": [
-        {
-          "msRoot": "C:\\seer-lab\\cil-tms\\tms-cms",
-          "source": "C:\\seer-lab\\cil-tms\\tms-cms\\src\\main\\java\\edu\\baylor\\ecs\\cms\\service\\EmsService.java",
-          "httpMethod": "POST",
-          "parentMethod": "edu.baylor.ecs.cms.service.EmsService.createExam",
-          "returnType": "edu.baylor.ecs.cms.dto.ExamDto",
-          "collection": false
-        },
- */
+
 public class RestCall {
-    private String msRoot;
-    private String source;
+
     private String httpMethod;
     private String parentMethod;
     private String returnType;
-    private String url;
+    private String uri;
     private boolean isCollection;
 
-    public RestCall(String httpMethod, String parentMethod, String returnType) {
+    public RestCall(String httpMethod, String parentMethod,
+                    String returnType, String uri, Boolean isCollection) {
+
         this.httpMethod = httpMethod;
         this.parentMethod = parentMethod;
         this.returnType = returnType;
+        this.uri = uri;
+        this.isCollection = isCollection;
     }
+        // Getter methods
+        public String getHttpMethod() {
+          return httpMethod;
+      }
+  
+      public String getParentMethod() {
+          return parentMethod;
+      }
+  
+      public String getReturnType() {
+          return returnType;
+      }
+  
+      public String getUri() {
+          return uri;
+      }
+  
+      public boolean isCollection() {
+          return isCollection;
+      }
+  
+      // Setter methods
+      public void setHttpMethod(String httpMethod) {
+          this.httpMethod = httpMethod;
+      }
+  
+      public void setParentMethod(String parentMethod) {
+          this.parentMethod = parentMethod;
+      }
+  
+      public void setReturnType(String returnType) {
+          this.returnType = returnType;
+      }
+  
+      public void setUri(String uri) {
+          this.uri = uri;
+      }
+  
+      public void setCollection(boolean isCollection) {
+          this.isCollection = isCollection;
+      }
 }

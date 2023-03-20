@@ -7,10 +7,14 @@ public class Module {
     private Name name;
 
     private Set<Entity> entities;
+    private Set<RestCall> restCalls;
+    private Set<Endpoint> endpoints;
 
-    public Module(Name name, Set<Entity> entities) {
+    public Module(Name name, Set<Entity> entities, Set<RestCall> restCalls, Set<Endpoint> endpoints) {
         this.name = name;
         this.entities = entities;
+        this.restCalls = restCalls;
+        this.endpoints = endpoints;
     }
 
     public Name getName() {
