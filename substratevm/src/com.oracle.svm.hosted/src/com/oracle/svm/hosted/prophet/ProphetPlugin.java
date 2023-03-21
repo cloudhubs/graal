@@ -42,6 +42,7 @@ import java.util.Optional;
 
 import com.oracle.svm.hosted.prophet.model.Endpoint;
 import com.oracle.svm.hosted.prophet.model.RestCall;
+import com.oracle.svm.hosted.prophet.RestDump;
 
 import com.oracle.svm.hosted.prophet.Logger;
 
@@ -80,17 +81,21 @@ public class ProphetPlugin {
         @Option(help = "Use NI as a prophet plugin.")//
         public static final HostedOptionKey<Boolean> ProphetPlugin = new HostedOptionKey<>(false);
 
-        @Option(help = "Try to extract rest calls.")//
-        public static final HostedOptionKey<Boolean> ProphetRest = new HostedOptionKey<>(false);
-
         @Option(help = "Base package to analyse.")//
         public static final HostedOptionKey<String> ProphetBasePackage = new HostedOptionKey<>("unknown");
 
         @Option(help = "Module name.")//
         public static final HostedOptionKey<String> ProphetModuleName = new HostedOptionKey<>("unknown");
 
-        @Option(help = "Where to store the analysis output?")//
-        public static final HostedOptionKey<String> ProphetOutputFile = new HostedOptionKey<>(null);
+        @Option(help = "Where to store the entity analysis")//
+        public static final HostedOptionKey<String> ProphetEntityOutputFile = new HostedOptionKey<>(null);
+        
+        @Option(help = "Where to store the restcall output")//
+        public static final HostedOptionKey<String> ProphetRestCallOutputFile = new HostedOptionKey<>(null);
+        
+        @Option(help = "Where to store the endpoint output")//
+        public static final HostedOptionKey<String> ProphetEndpointOutputFile = new HostedOptionKey<>(null);
+
     }
 
     public static void run(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb) {
@@ -103,23 +108,28 @@ public class ProphetPlugin {
 
         var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, modulename);
         Module module = plugin.doRun();
-        System.out.println("MODULE = " + module);
+        RestDump restDump = new RestDump();
+        restDump.writeOutRestCalls(module.getRestCalls(), Options.ProphetRestCallOutputFile.getValue());
+        restDump.writeOutEndpoints(module.getEndpoints(), Options.ProphetEndpointOutputFile.getValue());
+
         dumpModule(module);
     }
 
     private static void dumpModule(Module module) {
-        String outputFile = Options.ProphetOutputFile.getValue();
+        String outputFile = Options.ProphetEntityOutputFile.getValue();
         String serialized = JsonDump.dump(module);
         if (outputFile != null) {
-            logger.info("Writing the json into the output file: " + outputFile);
+            logger.info("Writing the entity json into the entity output file: " + outputFile);
             try (var writer = new FileWriter(outputFile)) {
                 writer.write(serialized);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         } else {
-            logger.info("Writing the json to standard output:");
-            System.out.println(serialized);
+            // logger.info("Writing the entity json to standard output:");
+            // System.out.println(serialized);
+            throw new RuntimeException("ProphetEntityOutputFile option was not provided");
+
         }
     }
 
@@ -139,17 +149,17 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
-        List<RestCall> restCallList = new ArrayList<>();
-        List<Endpoint> endpointList = new ArrayList<>();
+        Set<RestCall> restCallList = new HashSet<RestCall>();
+        Set<Endpoint> endpointList = new HashSet<Endpoint>();
 
         logger.info("Amount of classes = " + classes.size());
         for (Class<?> clazz : classes) {
             Optional<Entity> ent = EntityExtraction.extractClassEntityCalls(clazz, metaAccess, bb);
             ent.ifPresent(entities::add);
-            List<RestCall> restCalls = RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap);
+            Set<RestCall> restCalls = RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap);
             restCallList.addAll(restCalls);
             //ENDPOINT EXTRACTION HERE
-            List<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
+            Set<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
             endpointList.addAll(endpoints);
         }
         return new Module(new Name(modulename), entities, restCallList, endpointList);
@@ -158,9 +168,6 @@ public class ProphetPlugin {
     private List<Class<?>> filterRelevantClasses() {
         var res = new ArrayList<Class<?>>();
         for (Class<?> applicationClass : allClasses) {
-            if (applicationClass.getName().startsWith("edu.baylor.ecs.cms")){
-                System.out.println("app class name = " + applicationClass.getName());
-            }
             if (applicationClass.getName().startsWith(basePackage) && !applicationClass.isInterface())
                 res.add(applicationClass);
         }
