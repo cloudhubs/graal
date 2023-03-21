@@ -20,8 +20,8 @@ public class Module {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Module{ name= ").append(name).append(", \nentities= ").append(entities)
-                .append(", \nrestCalls = ").append(restCalls).append(", \nendpoints =" ).append(endpoints)
+        sb.append("Module{ name= ").append(name).append(", \n\nentities= ").append(entities)
+                .append(", \n\nrestCalls = ").append(restCalls).append(", \n\nendpoints =" ).append(endpoints)
                 .append('}');
         return sb.toString();
     }

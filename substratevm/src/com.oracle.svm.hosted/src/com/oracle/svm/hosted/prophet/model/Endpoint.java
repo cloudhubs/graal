@@ -24,6 +24,26 @@ public class Endpoint {
         this.endpointInClassName = endpointInClassName;
 
     }
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(endpointInClassName).append(parentMethod).append(", ").append(path)
+            .append(", ").append(returnType).append(", ").append(isCollection)
+            .append(", ").append(toStringModified(arguments));
+        return sb.toString();
+    }
+    private String toStringModified(List<String> args){
+        StringBuilder sb = new StringBuilder();
+        
+        for (int i = 0; i < args.size(); i++){
+            sb.append(str.replaceAll(" ", "_"));
+            if (i < args.size() - 1){
+                sb.append("&");
+            }
+        }
+
+        return sb.toString();
+    }
     // Getter methods
     public String getHttpMethod() {
         return httpMethod;
