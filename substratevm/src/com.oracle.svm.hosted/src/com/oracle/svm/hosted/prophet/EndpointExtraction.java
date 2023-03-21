@@ -216,20 +216,43 @@ public class EndpointExtraction {
         if(returnType instanceof ParameterizedType) {
             ParameterizedType type = (ParameterizedType) returnType;
             Type[] typeArgs = type.getActualTypeArguments();
-            Class<?> collectionType = (Class<?>) type.getRawType();
-            Class<?> elementType = (Class<?>) typeArgs[0];
+
+            boolean exceptionOccurred = false;
+            Class<?> collectionType = null, elementType = null;
+            try{
+                collectionType = (Class<?>) type.getRawType();
+                elementType = (Class<?>) typeArgs[0];
+            }catch(ClassCastException ex){
+                //example where this would occur:
+                /*
+                    @CrossOrigin
+                    @DeleteMapping("/{cateogryId}")
+                    public ResponseEntity<?> deleteCateogry(@PathVariable Long cateogryId) 
+                 */
+                exceptionOccurred = true;
+            }
 
 
             //objective: convert interface java.util.List -> java.util.List
             //double checking that it is "interface" portion removed (and not something else)
             if(collectionType.toString().substring(0,9).equalsIgnoreCase("interface")){
                 String result = collectionType.toString().substring(10);
-                result = result + "<" + elementType.toString().substring(6) + ">";
+
+                if(!exceptionOccurred){
+                    result = result + "<" + elementType.toString().substring(6) + ">";
+                }else{
+                    result = result + "<?>";
+                }
                 return result;
                 //System.out.println("TESTING PARSING: " + result);
             }else {
                 //TODO: need to handle Set, or other collection times (where this will break)
-                return collectionType.toString() + "<" + elementType.toString() + ">";
+
+                if(!exceptionOccurred){
+                    return collectionType.toString() + "<" + elementType.toString() + ">";
+                }else{
+                    return collectionType.toString() + "<?>";
+                }
             }
             // }else if(collectionType.toString().substring(0,3).equalsIgnoreCase("set")){
             //     //handle the case of a set:
