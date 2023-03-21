@@ -11,9 +11,11 @@ public class Endpoint {
     private String path;
     private boolean isCollection;
     private String endpointInClassName;
+    private String msName;
 
     public Endpoint(String httpMethod, String parentMethod, List<String> args, 
-                    String returnType, String path, Boolean isCollection, String endpointInClassName) {
+                    String returnType, String path, Boolean isCollection, 
+                    String endpointInClassName, String msName) {
 
         this.httpMethod = httpMethod;
         this.parentMethod = parentMethod;
@@ -22,13 +24,14 @@ public class Endpoint {
         this.path = path;
         this.isCollection = isCollection;
         this.endpointInClassName = endpointInClassName;
+        this.msName = msName;
 
     }
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(endpointInClassName).append(",").append(parentMethod).append(",").append(path)
-            .append(",").append(returnType).append(",").append(isCollection)
+        sb.append(this.msName).append(",").append(endpointInClassName).append(",").append(parentMethod).append(",").append(path)
+            .append(",").append(httpMethod).append(",").append(returnType).append(",").append(isCollection)
             .append(",").append(toStringModified(arguments));
         return sb.toString();
     }
@@ -48,6 +51,9 @@ public class Endpoint {
     // Getter methods
     public String getHttpMethod() {
         return httpMethod;
+    }
+    public String getMsName() {
+        return this.msName;
     }
     public String getEndpointInClassName() {
         return this.endpointInClassName;
@@ -75,6 +81,9 @@ public class Endpoint {
     // Setter methods
     public void setHttpMethod(String httpMethod) {
         this.httpMethod = httpMethod;
+    }
+    public void setMsName(String msName) {
+        this.msName = msName;
     }
     public void setEndpointInClassName(String className) {
         this.endpointInClassName = className;

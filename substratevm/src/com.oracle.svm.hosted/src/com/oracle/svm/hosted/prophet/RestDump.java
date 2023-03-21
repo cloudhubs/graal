@@ -13,9 +13,9 @@ import java.io.FileWriter;
 public class RestDump {
     
     //RESTCALL CSV ORDER SHOULD BE
-    //restCallInClassName, parentMethod, uri, returnType, isCollection
+    //msName, restCallInClassName, parentMethod, uri, httpMethod, returnType, isCollection
     //ENDPOINT CSV ORDER SHOULD BE 
-    //endpointInClassName, parentMethod, path, returnType, isCollection, arguments
+    //msName, endpointInClassName, parentMethod, path, httpMethod, returnType, isCollection, arguments
 
     public void writeOutRestCalls(Set<RestCall> restCalls, String outputFile){
 

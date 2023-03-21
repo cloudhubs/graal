@@ -54,7 +54,7 @@ public class EndpointExtraction {
 
     //annotations for controller to get endpoints
     private static final Set<String> controllerAnnotationNames = new HashSet<>(Arrays.asList("GetMapping", "PutMapping", "DeleteMapping", "PostMapping"));
-    public static Set<Endpoint> extractEndpoints(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
+    public static Set<Endpoint> extractEndpoints(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, String msName) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         Set<Endpoint> endpoints = new HashSet<Endpoint>();
         try {
@@ -152,7 +152,7 @@ public class EndpointExtraction {
                             // System.out.println("Return type: " + returnTypeResult);
                             // System.out.println("Is Collection: " + returnTypeCollection);
                             // System.out.println("============");
-                            endpoints.add(new Endpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName()));
+                            endpoints.add(new Endpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName(), msName));
                         }
                     }
 

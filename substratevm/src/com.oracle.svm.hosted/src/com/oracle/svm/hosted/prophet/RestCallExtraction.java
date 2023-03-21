@@ -56,7 +56,7 @@ public class RestCallExtraction {
     private final static String HTTP_ENTITY_PACKAGE = "org.springframework.http.HttpEntity";
     private static Set<RestCall> restCalls = new HashSet<>();
 
-    public static Set<RestCall> extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
+    public static Set<RestCall> extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap, String msName) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
@@ -137,7 +137,7 @@ public class RestCallExtraction {
                                 if (RETURN_TYPE == null || RETURN_TYPE.contains("edu.fudan.common.util.Response")){
                                     RETURN_TYPE = RestCallExtraction.HTTP_ENTITY_PACKAGE;
                                 }
-                                restCalls.add(new RestCall(HTTP_METHOD_TYPE, PARENT_METHOD, RETURN_TYPE, URI, callIsCollection, clazz.getCanonicalName()));
+                                restCalls.add(new RestCall(HTTP_METHOD_TYPE, PARENT_METHOD, RETURN_TYPE, URI, callIsCollection, clazz.getCanonicalName(), msName));
                                 // System.out.println("PARENT METHOD = " + PARENT_METHOD);
                                 // System.out.println("RETURN TYPE = " + RETURN_TYPE);
                                 // System.out.println("HTTP_METHOD_TYPE = " + HTTP_METHOD_TYPE);

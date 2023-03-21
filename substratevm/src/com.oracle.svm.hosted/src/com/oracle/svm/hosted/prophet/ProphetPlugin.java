@@ -37,6 +37,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import javax.management.RuntimeErrorException;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -52,7 +55,7 @@ public class ProphetPlugin {
     private final AnalysisUniverse universe;
     private final AnalysisMetaAccess metaAccess;
     private final Inflation bb;
-    private final String modulename;
+    private final String msName;
     private final String basePackage;
     private final List<Class<?>> allClasses;
     private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
@@ -61,12 +64,12 @@ public class ProphetPlugin {
 
     private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle", "jdk.vm");
 
-    public ProphetPlugin(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb, String basePackage, String modulename) {
+    public ProphetPlugin(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb, String basePackage, String msName) {
         this.loader = loader;
         universe = aUniverse;
         this.metaAccess = metaAccess;
         this.bb = bb;
-        this.modulename = modulename;
+        this.msName = msName;
         this.allClasses = new ArrayList<>();
         for (Class<?> clazz : loader.getApplicationClasses()) {
             boolean comesFromWantedPackage = unwantedBasePackages.stream().noneMatch(it -> clazz.getName().startsWith(it));
@@ -84,8 +87,8 @@ public class ProphetPlugin {
         @Option(help = "Base package to analyse.")//
         public static final HostedOptionKey<String> ProphetBasePackage = new HostedOptionKey<>("unknown");
 
-        @Option(help = "Module name.")//
-        public static final HostedOptionKey<String> ProphetModuleName = new HostedOptionKey<>("unknown");
+        @Option(help = "Microservice name.")//
+        public static final HostedOptionKey<String> ProphetMicroserviceName = new HostedOptionKey<>("unknown");
 
         @Option(help = "Where to store the entity analysis")//
         public static final HostedOptionKey<String> ProphetEntityOutputFile = new HostedOptionKey<>(null);
@@ -100,13 +103,19 @@ public class ProphetPlugin {
 
     public static void run(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb) {
         String basePackage = Options.ProphetBasePackage.getValue();
-        String modulename = Options.ProphetModuleName.getValue();
+        String msName = Options.ProphetMicroserviceName.getValue();
+
+        if (msName == null){
+            throw new RuntimeException("ProphetMicroserviceName option was not provided");
+        }else if (basePackage == null){
+            throw new RuntimeException("ProphetMicroserviceName option was not provided");
+        }
 
         logger.info("Running Prophet plugin");
         logger.info("Analyzing all classes in the " + basePackage + " package.");
-        logger.info("Creating module " + modulename);
+        logger.info("Creating module " + msName);
 
-        var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, modulename);
+        var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, msName);
         Module module = plugin.doRun();
         RestDump restDump = new RestDump();
         restDump.writeOutRestCalls(module.getRestCalls(), Options.ProphetRestCallOutputFile.getValue());
@@ -156,13 +165,13 @@ public class ProphetPlugin {
         for (Class<?> clazz : classes) {
             Optional<Entity> ent = EntityExtraction.extractClassEntityCalls(clazz, metaAccess, bb);
             ent.ifPresent(entities::add);
-            Set<RestCall> restCalls = RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap);
+            Set<RestCall> restCalls = RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
             restCallList.addAll(restCalls);
             //ENDPOINT EXTRACTION HERE
-            Set<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
+            Set<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb, Options.ProphetMicroserviceName.getValue());
             endpointList.addAll(endpoints);
         }
-        return new Module(new Name(modulename), entities, restCallList, endpointList);
+        return new Module(new Name(msName), entities, restCallList, endpointList);
     }
 
     private List<Class<?>> filterRelevantClasses() {

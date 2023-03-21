@@ -8,9 +8,11 @@ public class RestCall {
     private String uri;
     private boolean isCollection;
     private String restCallInClassName;
+    private String msName;
 
     public RestCall(String httpMethod, String parentMethod,
-            String returnType, String uri, Boolean isCollection, String restCallInClassName) {
+            String returnType, String uri, Boolean isCollection, 
+            String restCallInClassName, String msName) {
 
         this.httpMethod = httpMethod;
         this.parentMethod = parentMethod;
@@ -18,19 +20,23 @@ public class RestCall {
         this.uri = uri;
         this.isCollection = isCollection;
         this.restCallInClassName = restCallInClassName;
+        this.msName = msName;
+
     }
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(restCallInClassName).append(",").append(parentMethod).append(",").append(uri)
-            .append(",").append(returnType).append(",").append(isCollection);
+        sb.append(this.msName).append(",").append(restCallInClassName).append(",").append(parentMethod).append(",").append(uri)
+        .append(",").append(httpMethod).append(",").append(returnType).append(",").append(isCollection);
         return sb.toString();
     }
     // Getter methods
     public String getHttpMethod() {
         return httpMethod;
     }
-
+    public String getMsName() {
+        return this.msName;
+    }
     public String getRestCallInClassName() {
         return this.restCallInClassName;
     }
@@ -52,6 +58,9 @@ public class RestCall {
     }
 
     // Setter methods
+    public void setMsName(String msName) {
+        this.msName = msName;
+    }
     public void setHttpMethod(String httpMethod) {
         this.httpMethod = httpMethod;
     }
