@@ -12,11 +12,12 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.List;
+import java.util.Set;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -53,9 +54,9 @@ public class RestCallExtraction {
     */
     private final static String REST_TEMPLATE_PACKAGE = "org.springframework.web.client.RestTemplate.";
     private final static String HTTP_ENTITY_PACKAGE = "org.springframework.http.HttpEntity";
-    private static List<RestCall> restCalls = new ArrayList<>();
+    private static Set<RestCall> restCalls = new HashSet<>();
 
-    public static List<RestCall> extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
+    public static Set<RestCall> extractClassRestCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
