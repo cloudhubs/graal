@@ -27,9 +27,9 @@ public class Endpoint {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(endpointInClassName).append(", ").append(parentMethod).append(", ").append(path)
-            .append(", ").append(returnType).append(", ").append(isCollection)
-            .append(", ").append(toStringModified(arguments));
+        sb.append(endpointInClassName).append(",").append(parentMethod).append(",").append(path)
+            .append(",").append(returnType).append(",").append(isCollection)
+            .append(",").append(toStringModified(arguments));
         return sb.toString();
     }
     private String toStringModified(List<String> args){

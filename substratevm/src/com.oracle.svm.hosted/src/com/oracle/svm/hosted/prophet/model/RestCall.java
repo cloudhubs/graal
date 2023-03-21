@@ -22,8 +22,8 @@ public class RestCall {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(restCallInClassName).append(", ").append(parentMethod).append(", ").append(uri)
-            .append(", ").append(returnType).append(", ").append(isCollection);
+        sb.append(restCallInClassName).append(",").append(parentMethod).append(",").append(uri)
+            .append(",").append(returnType).append(",").append(isCollection);
         return sb.toString();
     }
     // Getter methods
