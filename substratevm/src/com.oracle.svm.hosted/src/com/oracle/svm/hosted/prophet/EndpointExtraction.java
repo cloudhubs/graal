@@ -191,7 +191,6 @@ public class EndpointExtraction {
             ex.printStackTrace();
         }
 
-        //here
         return endpoints;
     }
 

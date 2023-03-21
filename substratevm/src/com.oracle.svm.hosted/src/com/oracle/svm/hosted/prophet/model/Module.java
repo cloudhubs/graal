@@ -20,9 +20,24 @@ public class Module {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Module{ name= ").append(name).append(", \n\nentities= ").append(entities)
-                .append(", \n\nrestCalls = ").append(restCalls).append(", \n\nendpoints =" ).append(endpoints)
-                .append('}');
+        sb.append("MODULE NAME = ").append(name).append("\n").append("\nENTITIES = \n").append(entitiesToString(entities))
+                .append("\nREST_CALLS = \n").append(listToString(restCalls)).append("\nENDPOINTS = \n" ).append(listToString(endpoints))
+                .append('\n');
+        return sb.toString();
+    }
+
+    private String entitiesToString(Set<Entity> s){
+        StringBuilder sb = new StringBuilder();
+        for (Entity v : s){
+            sb.append("\t").append(v.toString()).append("\n");
+        }
+        return sb.toString();
+    }
+    private String listToString(List<?> l){
+        StringBuilder sb = new StringBuilder();
+        for (var v : l){
+            sb.append("\t").append(v.toString()).append("\n");
+        }
         return sb.toString();
     }
     public Name getName() {

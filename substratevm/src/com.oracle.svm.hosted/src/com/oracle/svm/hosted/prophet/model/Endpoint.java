@@ -27,7 +27,7 @@ public class Endpoint {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(endpointInClassName).append(parentMethod).append(", ").append(path)
+        sb.append(endpointInClassName).append(", ").append(parentMethod).append(", ").append(path)
             .append(", ").append(returnType).append(", ").append(isCollection)
             .append(", ").append(toStringModified(arguments));
         return sb.toString();
@@ -36,6 +36,7 @@ public class Endpoint {
         StringBuilder sb = new StringBuilder();
         
         for (int i = 0; i < args.size(); i++){
+            String str = args.get(i);
             sb.append(str.replaceAll(" ", "_"));
             if (i < args.size() - 1){
                 sb.append("&");
