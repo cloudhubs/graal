@@ -15,7 +15,7 @@ public class RestDump {
     //RESTCALL CSV ORDER SHOULD BE
     //msName, restCallInClassName, parentMethod, uri, httpMethod, returnType, isCollection
     //ENDPOINT CSV ORDER SHOULD BE 
-    //msName, endpointInClassName, parentMethod, path, httpMethod, returnType, isCollection, arguments
+    //msName, endpointInClassName, parentMethod, arguments, path, httpMethod, returnType, isCollection
 
     public void writeOutRestCalls(Set<RestCall> restCalls, String outputFile){
 

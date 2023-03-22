@@ -30,9 +30,9 @@ public class Endpoint {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(this.msName).append(",").append(endpointInClassName).append(",").append(parentMethod).append(",").append(path)
-            .append(",").append(httpMethod).append(",").append(returnType).append(",").append(isCollection)
-            .append(",").append(toStringModified(arguments));
+        sb.append(this.msName).append(",").append(endpointInClassName).append(",").append(parentMethod).append(",")
+        .append(toStringModified(arguments)).append(",").append(path).append(",").append(httpMethod)
+        .append(",").append(returnType).append(",").append(isCollection);
         return sb.toString();
     }
     private String toStringModified(List<String> args){
