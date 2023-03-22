@@ -41,13 +41,6 @@ public class EntityExtraction {
         Entity ent = null;
         HashMap<String, Field> fieldMap = new HashMap<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
-
-        if(isLombok(analysisType)){
-            for (AnalysisField field : analysisType.getInstanceFields(false)){
-
-                System.out.println(field.getName() + " " + field.getType().getName());
-            }
-        }
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
 
