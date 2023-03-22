@@ -173,7 +173,7 @@ public class EndpointExtraction {
                             // System.out.println("Is Collection: " + returnTypeCollection);
                             // System.out.println("============");
 
-                            endpoints.add(new Endpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName(), msName));
+                            endpoints.add(new Endpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, returnedPath, returnTypeCollection, clazz.getCanonicalName(), msName));
                         }
                     }
 
