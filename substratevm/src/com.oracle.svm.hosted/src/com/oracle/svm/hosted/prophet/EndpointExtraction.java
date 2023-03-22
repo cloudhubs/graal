@@ -111,7 +111,7 @@ public class EndpointExtraction {
                                 hasPath = false;
                             }
 
-                             //Have to also consider the "path" JSON attribute of the annotation, Example:
+                             //Have to also consider the "path" JSON attribute of the annotation, (Example from train-tickets admin-user service):
                              //@org.springframework.web.bind.annotation.GetMapping(path={"/welcome"}, headers={}, name="", produces={}, params={}, 
                              //value={}, consumes={})
                              //This is with the assumption that a value == path when within an annotation!
@@ -135,9 +135,32 @@ public class EndpointExtraction {
                             //Code to get the parentMethod attribute:
                             parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
 
+
+                            /* example of this case (in cms microservice):
+                             *  @CrossOrigin
+                                @RequestMapping(path = "/{id}/detail", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+                                public List<Question> getExamDetail(@PathVariable Integer id) {
+                             */
                             String[] pathArr = (String[]) annotation.annotationType().getMethod("path").invoke(annotation);
                             //path = pathArr.length > 0 ? pathArr[0] : null;
                             path = pathArr.length > 0 ? pathArr[0] : "";
+
+
+                            //case where this is needed:
+                            /*
+                             * ems microservice:
+                             *  @CrossOrigin
+                                 @RequestMapping(value = "/submit/{id}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+                                 public Exam submitExam(@PathVariable("id") Integer id) {
+                             * 
+                             * NOTE: This is a second attempt at fetching the path! (if the first approach above does not work!)
+                             */
+                            if(pathArr.length <= 0){
+                                String[] valueArr = (String[]) annotation.annotationType().getMethod("value").invoke(annotation);
+                                path = valueArr.length > 0 ? valueArr[0] : "";
+                            }
+
+
 
                             //cant use a string[] because of ClassCastException 
                             Object[] methods = (Object[]) annotation.annotationType().getMethod("method").invoke(annotation);
