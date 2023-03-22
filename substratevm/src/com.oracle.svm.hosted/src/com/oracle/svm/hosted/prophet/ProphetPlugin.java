@@ -37,21 +37,25 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import javax.management.RuntimeErrorException;
+
 import java.util.Map;
 import java.util.Optional;
 
+import com.oracle.svm.hosted.prophet.model.Endpoint;
+import com.oracle.svm.hosted.prophet.model.RestCall;
+import com.oracle.svm.hosted.prophet.RestDump;
+
 import com.oracle.svm.hosted.prophet.Logger;
 
-// todo move to a separate module for a faster compilation ?
 public class ProphetPlugin {
 
     private final ImageClassLoader loader;
     private final AnalysisUniverse universe;
     private final AnalysisMetaAccess metaAccess;
     private final Inflation bb;
-    private final String modulename;
-    private final Boolean extractRestCalls;
-//    private final Boolean extractEntities;
+    private final String msName;
     private final String basePackage;
     private final List<Class<?>> allClasses;
     private static final Logger logger = Logger.loggerFor(ProphetPlugin.class);
@@ -60,14 +64,12 @@ public class ProphetPlugin {
 
     private final List<String> unwantedBasePackages = Arrays.asList("org.graalvm", "com.oracle", "jdk.vm");
 
-    public ProphetPlugin(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb, String basePackage, String modulename, Boolean extractRestCalls /* , Boolean extractEntities */) {
+    public ProphetPlugin(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb, String basePackage, String msName) {
         this.loader = loader;
         universe = aUniverse;
         this.metaAccess = metaAccess;
         this.bb = bb;
-        this.modulename = modulename;
-        this.extractRestCalls = extractRestCalls;
-//        this.extractEntities = extractEntities;
+        this.msName = msName;
         this.allClasses = new ArrayList<>();
         for (Class<?> clazz : loader.getApplicationClasses()) {
             boolean comesFromWantedPackage = unwantedBasePackages.stream().noneMatch(it -> clazz.getName().startsWith(it));
@@ -82,49 +84,61 @@ public class ProphetPlugin {
         @Option(help = "Use NI as a prophet plugin.")//
         public static final HostedOptionKey<Boolean> ProphetPlugin = new HostedOptionKey<>(false);
 
-        @Option(help = "Try to extract rest calls.")//
-        public static final HostedOptionKey<Boolean> ProphetRest = new HostedOptionKey<>(false);
-
-//        @Option(help = "Try to extract Entities")
-//        public static final HostedOptionKey<Boolean> ProphetEntities = new HostedOptionKey<>(false);
-
         @Option(help = "Base package to analyse.")//
-        public static final HostedOptionKey<String> ProphetBasePackage = new HostedOptionKey<>("edu.baylor.ecs.cms");
+        public static final HostedOptionKey<String> ProphetBasePackage = new HostedOptionKey<>("unknown");
 
-        @Option(help = "Module name.")//
-        public static final HostedOptionKey<String> ProphetModuleName = new HostedOptionKey<>("cms");
+        @Option(help = "Microservice name.")//
+        public static final HostedOptionKey<String> ProphetMicroserviceName = new HostedOptionKey<>("unknown");
 
-        @Option(help = "Where to store the analysis output?")//
-        public static final HostedOptionKey<String> ProphetOutputFile = new HostedOptionKey<>(null);
+        @Option(help = "Where to store the entity analysis")//
+        public static final HostedOptionKey<String> ProphetEntityOutputFile = new HostedOptionKey<>(null);
+        
+        @Option(help = "Where to store the restcall output")//
+        public static final HostedOptionKey<String> ProphetRestCallOutputFile = new HostedOptionKey<>(null);
+        
+        @Option(help = "Where to store the endpoint output")//
+        public static final HostedOptionKey<String> ProphetEndpointOutputFile = new HostedOptionKey<>(null);
+
     }
 
     public static void run(ImageClassLoader loader, AnalysisUniverse aUniverse, AnalysisMetaAccess metaAccess, Inflation bb) {
         String basePackage = Options.ProphetBasePackage.getValue();
-        String modulename = Options.ProphetModuleName.getValue();
-        Boolean extractRestCalls = Options.ProphetRest.getValue();
-//        Boolean extractEntities = Options.ProphetEntities.getValue();
-        logger.info("Running Prophet plugin :)");
-        logger.info("Analyzing all classes in the " + basePackage + " package.");
-        logger.info("Creating module " + modulename);
+        String msName = Options.ProphetMicroserviceName.getValue();
 
-        var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, modulename, extractRestCalls/* , extractEntities */);
+        if (msName == null){
+            throw new RuntimeException("ProphetMicroserviceName option was not provided");
+        }else if (basePackage == null){
+            throw new RuntimeException("ProphetMicroserviceName option was not provided");
+        }
+
+        logger.info("Running Prophet plugin");
+        logger.info("Analyzing all classes in the " + basePackage + " package.");
+        logger.info("Creating module " + msName);
+
+        var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, msName);
         Module module = plugin.doRun();
+        RestDump restDump = new RestDump();
+        restDump.writeOutRestCalls(module.getRestCalls(), Options.ProphetRestCallOutputFile.getValue());
+        restDump.writeOutEndpoints(module.getEndpoints(), Options.ProphetEndpointOutputFile.getValue());
+
         dumpModule(module);
     }
 
     private static void dumpModule(Module module) {
-        String outputFile = Options.ProphetOutputFile.getValue();
+        String outputFile = Options.ProphetEntityOutputFile.getValue();
         String serialized = JsonDump.dump(module);
         if (outputFile != null) {
-            logger.info("Writing the json into the output file: " + outputFile);
+            logger.info("Writing the entity json into the entity output file: " + outputFile);
             try (var writer = new FileWriter(outputFile)) {
                 writer.write(serialized);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         } else {
-            logger.info("Writing the json to standard output:");
-            System.out.println(serialized);
+            // logger.info("Writing the entity json to standard output:");
+            // System.out.println(serialized);
+            throw new RuntimeException("ProphetEntityOutputFile option was not provided");
+
         }
     }
 
@@ -144,84 +158,31 @@ public class ProphetPlugin {
 
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
+        Set<RestCall> restCallList = new HashSet<RestCall>();
+        Set<Endpoint> endpointList = new HashSet<Endpoint>();
+
         logger.info("Amount of classes = " + classes.size());
         for (Class<?> clazz : classes) {
             Optional<Entity> ent = EntityExtraction.extractClassEntityCalls(clazz, metaAccess, bb);
             ent.ifPresent(entities::add);
-            if (extractRestCalls){
-                // EndpointExtraction.extractEndpoints(clazz, metaAccess, bb);
-                RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap);
-            }
+            Set<RestCall> restCalls = RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            restCallList.addAll(restCalls);
+            //ENDPOINT EXTRACTION HERE
+            Set<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb, Options.ProphetMicroserviceName.getValue());
+            endpointList.addAll(endpoints);
         }
-        return new Module(new Name(modulename), entities);
+        return new Module(new Name(msName), entities, restCallList, endpointList);
     }
 
-    // private void dumpAllClasses() {
-    //     logger.debug("---All app classes---");
-    //     allClasses.forEach(System.out::println);
-    //     logger.debug("---------------------");
-    // }
-
-    // private Set<Entity> filterEntityClasses(List<Class<?>> classes) {
-    //     var entities = new HashSet<Entity>();
-    //     for (Class<?> clazz : classes) {
-    //         Annotation[] annotations = clazz.getAnnotations();
-    //         for (Annotation ann : annotations) {
-    //             if (ann.annotationType().getName().startsWith("javax.persistence.Entity")) {
-    //                 Entity entity = processEntity(clazz, ann);
-    //                 entities.add(entity);
-    //             }
-    //         }
-    //     }
-    //     return entities;
-    // }
-    
     private List<Class<?>> filterRelevantClasses() {
         var res = new ArrayList<Class<?>>();
         for (Class<?> applicationClass : allClasses) {
-            if (applicationClass.getName().startsWith("edu.baylor.ecs.cms")){
-                System.out.println("app class name = " + applicationClass.getName());
-            }
             if (applicationClass.getName().startsWith(basePackage) && !applicationClass.isInterface())
                 res.add(applicationClass);
         }
         return res;
     }
-
-    // private Entity processEntity(Class<?> clazz, Annotation ann) {
-    //     var fields = new HashSet<Field>();
-    //     for (java.lang.reflect.Field declaredField : clazz.getDeclaredFields()) {
-    //         Field field = new Field();
-    //         field.setName(new Name(declaredField.getName()));
-    //         if (isCollection(declaredField.getType())) {
-    //             Type nested = ((ParameterizedType) declaredField.getGenericType()).getActualTypeArguments()[0];
-    //             field.setType(((Class<?>) nested).getSimpleName());
-    //             field.setCollection(true);
-    //         } else {
-    //             field.setType(declaredField.getType().getSimpleName());
-    //             field.setCollection(false);
-    //         }
-
-    //         var annotations = new HashSet<com.oracle.svm.hosted.prophet.model.Annotation>();
-    //         for (Annotation declaredAnnotation : declaredField.getAnnotations()) {
-    //             var annotation = new com.oracle.svm.hosted.prophet.model.Annotation();
-    //             annotation.setStringValue(declaredAnnotation.annotationType().getSimpleName());
-    //             annotation.setName("@" + declaredAnnotation.annotationType().getSimpleName());
-    //             annotations.add(annotation);
-
-    //             if (relationAnnotationNames.stream().anyMatch(it -> annotation.getName().contains(it))) {
-    //                 field.setReference(true);
-    //                 field.setEntityRefName(field.getType());
-    //             }
-    //         }
-    //         field.setAnnotations(annotations);
-    //         fields.add(field);
-    //     }
-    //     Entity entity = new Entity(new Name(clazz.getSimpleName()));
-    //     entity.setFields(fields);
-    //     return entity;
-    // }
-
+ 
     private List<Class<?>> filterClasses() {
         var res = new ArrayList<Class<?>>();
         for (Class<?> applicationClass : allClasses) {
@@ -230,13 +191,4 @@ public class ProphetPlugin {
         }
         return res;
     }
-
-    // public static boolean isCollection(Class<?> type) {
-    //     if (type.getName().contains("Set")) {
-    //         return true;
-    //     } else if (type.getName().contains("Collection")) {
-    //         return true;
-    //     } else
-    //         return type.getName().contains("List");
-    // }
 }
