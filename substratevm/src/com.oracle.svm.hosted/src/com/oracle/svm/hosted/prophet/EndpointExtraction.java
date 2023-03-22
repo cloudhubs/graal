@@ -79,7 +79,7 @@ public class EndpointExtraction {
                     Annotation[] annotations = method.getAnnotations();
                     for (Annotation annotation : annotations) {
                         
-                        ArrayList<String> parameterAnnotationsList = null;
+                        ArrayList<String> parameterAnnotationsList = new ArrayList<>();
                         String httpMethod = null, parentMethod = null, returnTypeResult = null, path = "";
                         boolean returnTypeCollection = false, isEndpoint = false;
                         if (controllerAnnotationNames.contains(annotation.annotationType().getSimpleName())) {
