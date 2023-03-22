@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import java.lang.reflect.Method;
+import org.graalvm.polyglot.HostAccess;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -58,6 +59,20 @@ public class EndpointExtraction {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         Set<Endpoint> endpoints = new HashSet<Endpoint>();
         try {
+
+            //Obtaining the class path (which will be combined with the method's path for a full URI)
+            Annotation[] annotationsClass = clazz.getAnnotations();
+            String[] fullPath = null;
+            boolean hasFullPath = false;
+            for (Annotation annotationClass : annotationsClass) {
+                if (annotationClass.annotationType().getSimpleName().equals("RequestMapping")) {
+                    Method pathMethod = annotationClass.annotationType().getMethod("value");
+                    fullPath = (String[]) pathMethod.invoke(annotationClass);
+                    hasFullPath = true;
+                    //System.out.println(fullPath[0]);
+                }
+            }
+
             for (AnalysisMethod method : analysisType.getDeclaredMethods()) {
                 try {      
                     // What I will need to extract: String httpMethod, String parentMethod, String arguments, String returnType
@@ -65,7 +80,7 @@ public class EndpointExtraction {
                     for (Annotation annotation : annotations) {
                         
                         ArrayList<String> parameterAnnotationsList = new ArrayList<>();
-                        String httpMethod = null, parentMethod = null, returnTypeResult = null, path = null;
+                        String httpMethod = null, parentMethod = null, returnTypeResult = null, path = "";
                         boolean returnTypeCollection = false, isEndpoint = false;
                         if (controllerAnnotationNames.contains(annotation.annotationType().getSimpleName())) {
                             isEndpoint = true;
@@ -94,18 +109,16 @@ public class EndpointExtraction {
                                 hasPath = true;
                             }catch(ArrayIndexOutOfBoundsException ex){
                                 hasPath = false;
-                             }
+                            }
 
                              //Have to also consider the "path" JSON attribute of the annotation, Example:
                              //@org.springframework.web.bind.annotation.GetMapping(path={"/welcome"}, headers={}, name="", produces={}, params={}, 
                              //value={}, consumes={})
                              //This is with the assumption that a value == path when within an annotation!
-                             if(!hasPath){
+                            if(!hasPath){
                                 try{
                                     path = ((String[]) annotation.annotationType().getMethod("path").invoke(annotation))[0];
-                                }catch(ArrayIndexOutOfBoundsException ex){
-
-                                }
+                                }catch(ArrayIndexOutOfBoundsException ex){}
                             }
 
                             parameterAnnotationsList = extractArguments(method);
@@ -123,7 +136,8 @@ public class EndpointExtraction {
                             parentMethod = method.getQualifiedName().substring(0,method.getQualifiedName().indexOf("("));
 
                             String[] pathArr = (String[]) annotation.annotationType().getMethod("path").invoke(annotation);
-                            path = pathArr.length > 0 ? pathArr[0] : null;
+                            //path = pathArr.length > 0 ? pathArr[0] : null;
+                            path = pathArr.length > 0 ? pathArr[0] : "";
 
                             //cant use a string[] because of ClassCastException 
                             Object[] methods = (Object[]) annotation.annotationType().getMethod("method").invoke(annotation);
@@ -142,9 +156,15 @@ public class EndpointExtraction {
                         }
                         
                         if(isEndpoint) {
-                            // System.out.println("============");
+
+                            //add the controller path as well (if it has a RequestMapping annotation)
+                            String returnedPath = path;
+                            if(hasFullPath){
+                                returnedPath = fullPath[0] + path;
+                            }
+                           
                             // System.out.println("HTTP Method: " + httpMethod);
-                            // System.out.println("Path: " + path);
+                            // System.out.println("Path: " + returnedPath);
                             // System.out.println("parentMethod: " + parentMethod);
                             // for(String value : parameterAnnotationsList){
                             //     System.out.println("argument: " + value);
@@ -152,37 +172,11 @@ public class EndpointExtraction {
                             // System.out.println("Return type: " + returnTypeResult);
                             // System.out.println("Is Collection: " + returnTypeCollection);
                             // System.out.println("============");
+
                             endpoints.add(new Endpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName(), msName));
                         }
                     }
 
-                    // StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
-                    // for (Node node : decodedGraph.getNodes()) {
-                    //     if (node instanceof Invoke) {
-                    //         Invoke invoke = (Invoke) node;
-                    //         AnalysisMethod targetMethod = ((AnalysisMethod) invoke.getTargetMethod());
-                    //         if (targetMethod.getQualifiedName().startsWith(REST_TEMPLATE_PACKAGE)) {
-                    //             System.out.println("Method Qualified Name = " + method.getQualifiedName());
-                    //             System.out.println("Target Method Qualified Name = " + targetMethod.getQualifiedName());
-                    //             CallTargetNode callTargetNode = invoke.callTarget();
-                    //             NodeInputList<ValueNode> arguments = callTargetNode.arguments();
-                    //             ValueNode zero = arguments.get(0);
-                    //             ValueNode one = arguments.get(1);
-                    //             if (one instanceof InvokeWithExceptionNode) {
-                    //                 // todo figure out when this does not work
-                    //                 System.out.println("\tFirst arg is invoke:");
-                    //                 CallTargetNode callTarget = ((InvokeWithExceptionNode) one).callTarget();
-                    //                 System.out.println(callTarget.targetMethod());
-                    //                 System.out.println("\targs:");
-                    //                 for (ValueNode argument : callTarget.arguments()) {
-                    //                     System.out.println("\targument = " + argument);
-                    //                 }
-                    //             }
-                    //             System.out.println(zero + " " + one);
-                    //             System.out.println("===");
-                    //         }
-                    //     }
-                    // }
                 } catch (Exception | LinkageError ex) {
                     ex.printStackTrace();
                 }
