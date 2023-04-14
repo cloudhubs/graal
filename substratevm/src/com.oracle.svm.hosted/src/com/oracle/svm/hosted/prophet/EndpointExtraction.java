@@ -177,7 +177,7 @@ public class EndpointExtraction {
                                 returnTypeCollection = isCollection(returnTypeResult);
                             }
                         }
-                        
+
                         if(isEndpoint) {
 
                             //add the controller path as well (if it has a RequestMapping annotation)
@@ -185,7 +185,7 @@ public class EndpointExtraction {
                             if(hasFullPath){
                                 returnedPath = fullPath[0] + path;
                             }
-                           
+                                    
                             // System.out.println("HTTP Method: " + httpMethod);
                             // System.out.println("Path: " + returnedPath);
                             // System.out.println("parentMethod: " + parentMethod);
@@ -281,8 +281,10 @@ public class EndpointExtraction {
             //System.out.println("Collection: " + collectionType);
             //System.out.println("Element: " + elementType);
         }else {
+
+            //case of just void, need to check the length of the string first
             //case of just a non-collection (object or primitive value) returned:
-            if(returnType.toString().substring(0,5).equalsIgnoreCase("class")){
+            if(returnType.toString().length() == 5 && returnType.toString().substring(0,5).equalsIgnoreCase("class")){
                 return returnType.toString().substring(6);
             }else{
                 return returnType.toString();
@@ -293,30 +295,30 @@ public class EndpointExtraction {
 
     /* Helper function to extract arguments from a method */
     public static ArrayList<String> extractArguments(AnalysisMethod method) {
+     
         //Code to get the argument attribute:
         // Example: "arguments": "[@PathVariable Integer id]",
-        Annotation[][] annotations1 = method.getParameterAnnotations();
         ArrayList<String> parameterAnnotationsList = new ArrayList<>();
-        for (int i = 0; i < annotations1.length; i++) {
+        Parameter[] params = method.getParameters();
+        Annotation[][] annotations1 = method.getParameterAnnotations();
+    
+        for (int i = 0; i < params.length; i++) {
             Annotation[] annotations2 = annotations1[i];
+            //Parameter Annotations (e.g., @PathVariable) are optional, thus can be empty (null)
+            String parameterAnnotation = "";
             for (int j = 0; j < annotations2.length; j++) {
                 Annotation annotation3 = annotations2[j];
-                parameterAnnotationsList.add("@" + annotation3.annotationType().getSimpleName());
+                parameterAnnotation += "@" + annotation3.annotationType().getSimpleName();
             }
+            String parameterType = params[i].getParameterizedType().toString();
+            String parameterName = params[i].getName();
+            String simpleParameterType = parameterType.substring(parameterType.lastIndexOf(".")+1);
+            String fullParameter = parameterAnnotation + " " + simpleParameterType + " " + parameterName;
+            parameterAnnotationsList.add(fullParameter);
         }
 
-        Parameter[] params = method.getParameters();
-        if(parameterAnnotationsList.size() > 0){
-            int j = 0;
-            for(Parameter p: params){
-                String parameterType = p.getParameterizedType().toString();
-                parameterAnnotationsList.set(j, parameterAnnotationsList.get(j) + " " + 
-                parameterType.substring(parameterType.lastIndexOf(".")+1,parameterType.length()) + " " +
-                p.getName());
-
-                j++;
-            }
-        }
         return parameterAnnotationsList;
+
     }
+
 }
