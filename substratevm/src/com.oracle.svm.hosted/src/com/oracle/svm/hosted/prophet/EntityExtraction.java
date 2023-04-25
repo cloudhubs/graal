@@ -30,6 +30,10 @@ import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+import java.lang.reflect.Type;
+import java.lang.reflect.ParameterizedType;
 
 public class EntityExtraction {
 
@@ -41,9 +45,10 @@ public class EntityExtraction {
         Entity ent = null;
         HashMap<String, Field> fieldMap = new HashMap<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
+
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
-
+                
                 String fieldName = field.getName();
 
                 try {
@@ -58,8 +63,38 @@ public class EntityExtraction {
                             typeName = typeName.replace(PRIMITIVE_VALUE, "");
                             typeName = typeName.replace(">", "");
                         }
+                        // Sets if it is a collection or reference based on type
+                        if(typeName.equals("Set") || typeName.equals("List") || typeName.equals("Queue")
+                            || typeName.equals("Deque") || typeName.equals("Map") || typeName.equals("Array")){
+                            
+                                
+                                java.lang.reflect.Field field2 = clazz.getDeclaredField(field.getWrapped().getName());
+                                Type genericType = field2.getGenericType();
+                                ParameterizedType parameterizedType = (ParameterizedType) genericType;
+                                Type[] typeArguments = parameterizedType.getActualTypeArguments();
+                                String elementName = typeName + "<";
+                                for(Type elementType : typeArguments){
+                                    int lastIndex = elementType.getTypeName().lastIndexOf('.');
+                                    if(lastIndex != -1){
+                                        elementName = elementName + elementType.getTypeName().substring(lastIndex + 1) + ",";
+                                    }else{
+                                        throw new IllegalArgumentException("ParameterizedType does not contain any periods in EntityExtraction.java");
+                                    }
+                                }
+                                elementName = elementName.substring(0, elementName.length() - 1);
+                                if(typeArguments.length != 0){
+                                    elementName += ">";
+                                }
 
-                        fieldMap.putIfAbsent(fieldName, new Field(typeName, new Name(fieldName)));
+
+                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, typeName, true));
+                        }else if(typeName.equals("byte") || typeName.equals("short") || typeName.equals("int") 
+                            || typeName.equals("long") || typeName.equals("float") || typeName.equals("double")
+                            || typeName.equals("char") || typeName.equals("boolean")){
+                            fieldMap.putIfAbsent(fieldName, new Field(typeName, new Name(fieldName)));
+                        }else{
+                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, typeName, false));
+                        }
                         Set<com.oracle.svm.hosted.prophet.model.Annotation> annotationsSet = new HashSet<>();
                         if(isLombok(analysisType)){
                             ent = new Entity(new Name(clazz.getSimpleName()));
