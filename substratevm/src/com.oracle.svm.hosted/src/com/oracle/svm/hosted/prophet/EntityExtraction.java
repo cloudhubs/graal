@@ -48,13 +48,11 @@ public class EntityExtraction {
 
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
-                
                 String fieldName = field.getName();
 
                 try {
                     // Spring
                     if (field.getWrapped().getAnnotations().length > 0 || isLombok(analysisType)) {
-                        
                         String typeName = field.getWrapped().getType().toString();
                         //Handles HotSpotType and HotSpotResolvedPrimitiveType
                         if(typeName.contains("/") && typeName.contains(";")){
@@ -87,7 +85,7 @@ public class EntityExtraction {
                                 }
 
 
-                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, typeName, true));
+                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), elementName, null, true, elementName, true));
                         }else if(typeName.equals("byte") || typeName.equals("short") || typeName.equals("int") 
                             || typeName.equals("long") || typeName.equals("float") || typeName.equals("double")
                             || typeName.equals("char") || typeName.equals("boolean")){
@@ -159,8 +157,8 @@ public class EntityExtraction {
             setFound = false;
 
             for(AnalysisMethod method : methods){
-
-                if(method.getName().toLowerCase().equals("get" + field.getName().toLowerCase())){
+                if(method.getName().toLowerCase().equals("get" + field.getName().toLowerCase())
+                || method.getName().toLowerCase().equals("is" + field.getName().toLowerCase())){
                     getFound = true;
                 }
                 if(method.getName().toLowerCase().equals("set" + field.getName().toLowerCase())){
