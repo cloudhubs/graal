@@ -45,6 +45,8 @@ public class EntityExtraction {
         Entity ent = null;
         HashMap<String, Field> fieldMap = new HashMap<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
+        //List<String> collectionNames = {"Set", "List", "Queue", "Deque", "Map", "Array"};
+        //List<String> primitiveNames = {"byte", "short", "int", "long", "float", "double", "char", "boolean"};
 
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
@@ -85,17 +87,19 @@ public class EntityExtraction {
                                 }
 
 
-                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), elementName, null, true, elementName, true));
+                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), elementName, null, true, field.getType().getName().substring(1), true));
                         }else if(typeName.equals("byte") || typeName.equals("short") || typeName.equals("int") 
                             || typeName.equals("long") || typeName.equals("float") || typeName.equals("double")
                             || typeName.equals("char") || typeName.equals("boolean")){
-                            fieldMap.putIfAbsent(fieldName, new Field(typeName, new Name(fieldName)));
+                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, field.getType().getName().substring(1), false));
                         }else{
-                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, typeName, false));
+                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, field.getType().getName().substring(1), false));
                         }
                         Set<com.oracle.svm.hosted.prophet.model.Annotation> annotationsSet = new HashSet<>();
                         if(isLombok(analysisType)){
-                            ent = new Entity(new Name(clazz.getSimpleName()));
+                            Name temp = new Name(clazz.getSimpleName());
+                            temp.setFullName(analysisType.getName().substring(1));
+                            ent = new Entity(temp);
                         }
 
                         for (Annotation ann : field.getWrapped().getAnnotations()) {
@@ -103,7 +107,9 @@ public class EntityExtraction {
                             if(ann.toString().startsWith(ENTITY_PACKAGE)){
                                 //Create new entity if it does not exist
                                 if (ent == null) {
-                                    ent = new Entity(new Name(clazz.getSimpleName()));
+                                    Name temp = new Name(clazz.getSimpleName());
+                                    temp.setFullName(analysisType.getName().substring(1));
+                                    ent = new Entity(temp);
                                 }
                                 //Create a new annotation and set it's name
                                 com.oracle.svm.hosted.prophet.model.Annotation tempAnnot = new com.oracle.svm.hosted.prophet.model.Annotation();
