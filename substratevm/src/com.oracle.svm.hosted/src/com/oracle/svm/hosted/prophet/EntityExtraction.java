@@ -45,28 +45,25 @@ public class EntityExtraction {
         Entity ent = null;
         HashMap<String, Field> fieldMap = new HashMap<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
-        //List<String> collectionNames = {"Set", "List", "Queue", "Deque", "Map", "Array"};
-        //List<String> primitiveNames = {"byte", "short", "int", "long", "float", "double", "char", "boolean"};
-
+        List<String> collectionNames = {"Set", "List", "Queue", "Deque", "Map", "Array"};
+        List<String> primitiveNames = {"byte", "short", "int", "long", "float", "double", "char", "boolean"};
+        
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
                 String fieldName = field.getName();
 
                 try {
                     // Spring
-                    if (field.getWrapped().getAnnotations().length > 0 || isLombok(analysisType)) {
+                    if (field.getWrapped().getAnnotations().length > 0 || isLombok(analysisType, clazz)) {
                         String typeName = field.getWrapped().getType().toString();
                         //Handles HotSpotType and HotSpotResolvedPrimitiveType
                         if(typeName.contains("/") && typeName.contains(";")){
                             typeName = typeName.substring(typeName.lastIndexOf("/") + 1, typeName.indexOf(";"));
                         }else if(typeName.contains(PRIMITIVE_VALUE)){
-                            typeName = typeName.replace(PRIMITIVE_VALUE, "");
-                            typeName = typeName.replace(">", "");
+                            typeName = typeName.replace(PRIMITIVE_VALUE, "").replace(">", "");
                         }
                         // Sets if it is a collection or reference based on type
-                        if(typeName.equals("Set") || typeName.equals("List") || typeName.equals("Queue")
-                            || typeName.equals("Deque") || typeName.equals("Map") || typeName.equals("Array")){
-                            
+                        if(collectionNames.contains(typeName)){
                                 
                                 java.lang.reflect.Field field2 = clazz.getDeclaredField(field.getWrapped().getName());
                                 Type genericType = field2.getGenericType();
@@ -86,19 +83,15 @@ public class EntityExtraction {
                                     elementName += ">";
                                 }
 
-
                             fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), elementName, null, true, field.getType().getName().substring(1), true));
-                        }else if(typeName.equals("byte") || typeName.equals("short") || typeName.equals("int") 
-                            || typeName.equals("long") || typeName.equals("float") || typeName.equals("double")
-                            || typeName.equals("char") || typeName.equals("boolean")){
+                        }else if(primitiveNames.contains(typeName)){
                             fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, field.getType().getName().substring(1), false));
                         }else{
                             fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, field.getType().getName().substring(1), false));
                         }
                         Set<com.oracle.svm.hosted.prophet.model.Annotation> annotationsSet = new HashSet<>();
-                        if(isLombok(analysisType)){
-                            Name temp = new Name(clazz.getSimpleName());
-                            temp.setFullName(analysisType.getName().substring(1));
+                        if(isLombok(analysisType, clazz)){
+                            Name temp = new Name(clazz.getSimpleName(), analysisType.getName().substring(1));
                             ent = new Entity(temp);
                         }
 
@@ -107,18 +100,16 @@ public class EntityExtraction {
                             if(ann.toString().startsWith(ENTITY_PACKAGE)){
                                 //Create new entity if it does not exist
                                 if (ent == null) {
-                                    Name temp = new Name(clazz.getSimpleName());
-                                    temp.setFullName(analysisType.getName().substring(1));
+                                    Name temp = new Name(clazz.getSimpleName(), analysisType.getName().substring(1));
                                     ent = new Entity(temp);
                                 }
                                 //Create a new annotation and set it's name
                                 com.oracle.svm.hosted.prophet.model.Annotation tempAnnot = new com.oracle.svm.hosted.prophet.model.Annotation();
-                                String annName = ann.toString();
 
                                 //String manipulation for annotation names
+                                String annName = ann.toString();
                                 if(annName.contains(ENTITY_PACKAGE)){
-                                    annName = annName.replace(ENTITY_PACKAGE, "");
-                                    annName = "@" + annName;
+                                    annName = "@" + annName.replace(ENTITY_PACKAGE, "");
                                     annName = annName.substring(0, annName.indexOf("("));
                                 }
                                 tempAnnot.setName(annName);
@@ -151,23 +142,26 @@ public class EntityExtraction {
 
     //Because Lombok annotations are processed at compile-time, they are not retained in the compiled
     //class' file annotation table
-    public static boolean isLombok(AnalysisType analysisType){
+    public static boolean isLombok(AnalysisType analysisType, Class<?> clazz){
         
         AnalysisField[] fields = analysisType.getInstanceFields(false);
         AnalysisMethod[] methods = analysisType.getDeclaredMethods();
         boolean getFound, setFound;
-
+        
         for(AnalysisField field : fields){
 
             getFound = false;
             setFound = false;
 
             for(AnalysisMethod method : methods){
+                // Checks methods generated by Lombok for Entities vs method names present
                 if(method.getName().toLowerCase().equals("get" + field.getName().toLowerCase())
-                || method.getName().toLowerCase().equals("is" + field.getName().toLowerCase())){
+                || method.getName().toLowerCase().equals("is" + field.getName().toLowerCase())
+                || method.getName().toLowerCase().equals(field.getName().toLowerCase())){
                     getFound = true;
                 }
-                if(method.getName().toLowerCase().equals("set" + field.getName().toLowerCase())){
+                if(method.getName().toLowerCase().equals("set" + field.getName().toLowerCase())
+                || method.getName().toLowerCase().equals("set" + field.getName().toLowerCase().replace("is", ""))){
                     setFound = true;
                 }
 

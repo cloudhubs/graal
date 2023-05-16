@@ -33,6 +33,11 @@ public class Name {
         this.fullName = str;
     }
 
+    public Name(String name, String fullName){
+        this.name = name;
+        this.fullName = fullName;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o)
