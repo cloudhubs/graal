@@ -39,21 +39,20 @@ public class EntityExtraction {
 
     private final static String ENTITY_PACKAGE = "@javax.persistence.";
     private final static String PRIMITIVE_VALUE = "HotSpotResolvedPrimitiveType<";
-    private final static String LOMBOK_ANNOTATION = "@Data";
 
     public static Optional<Entity> extractClassEntityCalls(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb) {
         Entity ent = null;
         HashMap<String, Field> fieldMap = new HashMap<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
-        List<String> collectionNames = {"Set", "List", "Queue", "Deque", "Map", "Array"};
-        List<String> primitiveNames = {"byte", "short", "int", "long", "float", "double", "char", "boolean"};
+        List<String> collectionNames = Arrays.asList("Set", "List", "Queue", "Deque", "Map", "Array");
+        List<String> primitiveNames = Arrays.asList("byte", "short", "int", "long", "float", "double", "char", "boolean");
         
         try {
             for (AnalysisField field : analysisType.getInstanceFields(false)) {
                 String fieldName = field.getName();
-
                 try {
                     // Spring
+                    List<Annotation> classAnns = Arrays.asList(clazz.getAnnotations());
                     if (field.getWrapped().getAnnotations().length > 0 || isLombok(analysisType, clazz)) {
                         String typeName = field.getWrapped().getType().toString();
                         //Handles HotSpotType and HotSpotResolvedPrimitiveType
@@ -84,8 +83,6 @@ public class EntityExtraction {
                                 }
 
                             fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), elementName, null, true, field.getType().getName().substring(1), true));
-                        }else if(primitiveNames.contains(typeName)){
-                            fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, field.getType().getName().substring(1), false));
                         }else{
                             fieldMap.putIfAbsent(fieldName, new Field(new Name(fieldName), typeName, null, true, field.getType().getName().substring(1), false));
                         }
@@ -128,8 +125,7 @@ public class EntityExtraction {
                 }
             }
             if (ent != null) {
-                //if (!fieldMap.values().isEmpty())
-                    ent.setFields(new HashSet<>(fieldMap.values()));
+                ent.setFields(new HashSet<>(fieldMap.values()));
             }
 
             return Optional.ofNullable(ent);
