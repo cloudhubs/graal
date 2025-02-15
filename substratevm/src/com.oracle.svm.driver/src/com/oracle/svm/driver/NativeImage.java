@@ -2149,17 +2149,21 @@ public class NativeImage {
     public static List<Path> expandAsteriskClassPathElement(String cp) {
         String separators = Pattern.quote(File.separator);
         if (OS.getCurrent().equals(OS.WINDOWS)) {
-            separators += "/"; /* on Windows also / is accepted as valid separator */
+            separators += "/"; // on Windows also / is accepted as valid separator
         }
         List<String> components = new ArrayList<>(List.of(cp.split("[" + separators + "]")));
         int lastElementIndex = components.size() - 1;
         if (lastElementIndex >= 0 && "*".equals(components.get(lastElementIndex))) {
             components.remove(lastElementIndex);
             Path searchDir = Path.of(String.join(File.separator, components));
-            try (Stream<Path> filesInSearchDir = Files.list(searchDir)) {
-                return filesInSearchDir.filter(NativeImage::hasJarFileSuffix).collect(Collectors.toList());
-            } catch (IOException e) {
-                throw NativeImage.showError("Class path element asterisk (*) expansion failed for directory " + searchDir);
+            if (Files.exists(searchDir) && Files.isDirectory(searchDir)) {
+                try (Stream<Path> filesInSearchDir = Files.list(searchDir)) {
+                    return filesInSearchDir.filter(NativeImage::hasJarFileSuffix).collect(Collectors.toList());
+                } catch (IOException e) {
+                    throw NativeImage.showError("Class path element asterisk (*) expansion failed for directory " + searchDir, e);
+                }
+            } else {
+                throw NativeImage.showError("Directory does not exist or is not a directory: " + searchDir);
             }
         }
         return List.of(Path.of(cp));

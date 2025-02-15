@@ -1,13 +1,13 @@
 package com.oracle.svm.hosted.prophet.model;
 
-public class RESTParameter {
-    
+public class WebsocketParameter {
+
     private Boolean isBody;
     private Boolean isPath;
     private String paramType;
     private int paramCount = 0;
 
-    public RESTParameter(Boolean isBody, Boolean isPath){
+    public WebsocketParameter(Boolean isBody, Boolean isPath){
         this.isBody = isBody;
         this.isPath = isPath;
     }

@@ -1,51 +1,51 @@
 package com.oracle.svm.hosted.prophet.model;
 
-import com.oracle.svm.hosted.prophet.model.RESTParameter;
+public class WebsocketConnection {
 
-public class RestCall {
-
-    private String httpMethod;
     private String parentMethod;
     private String returnType;
     private String uri;
     private boolean isCollection;
-    private String restCallInClassName;
+    private String connectionInClassName;
     private String msName;
-    private RESTParameter param;
+    private WebsocketParameter param;
 
-    public RestCall(String httpMethod, String parentMethod,
-            String returnType, String uri, Boolean isCollection, 
-            String restCallInClassName, String msName, RESTParameter param) {
+    public WebsocketConnection(String parentMethod, String returnType, String uri, Boolean isCollection,
+                               String connectionInClassName, String msName, WebsocketParameter param) {
 
-        this.httpMethod = httpMethod;
-        this.parentMethod = parentMethod;
-        this.returnType = returnType;
-        this.uri = uri;
-        this.isCollection = isCollection;
-        this.restCallInClassName = restCallInClassName;
         this.msName = msName;
+        this.connectionInClassName = connectionInClassName;
+        this.parentMethod = parentMethod;
+        this.uri = uri;
+        this.returnType = returnType;
         this.param = param;
+        this.isCollection = isCollection;
     }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(this.msName).append(",").append(restCallInClassName).append(",").append(parentMethod).append(",").append(uri)
-        .append(",").append(httpMethod).append(",").append(returnType).append(",") .append(param.getIsPath()).append(",")
-        .append(param.getIsBody()).append(",").append(param.getParamType()).append(",").append(param.getParamCount()).append(",").append(isCollection);
+        sb.append(this.msName != null ? this.msName : "").append(",")
+                .append(connectionInClassName != null ? connectionInClassName : "").append(",")
+                .append(parentMethod != null ? parentMethod : "").append(",")
+                .append(uri != null ? uri : "").append(",")
+                .append(returnType != null ? returnType : "").append(",")
+                .append(param != null ? param : "").append(",")
+                .append(isCollection);
         return sb.toString();
     }
+
     // Getter methods
-    public String getHttpMethod() {
-        return httpMethod;
-    }
-    public RESTParameter getParam(){
+    public WebsocketParameter getParam(){
         return this.param;
     }
+
     public String getMsName() {
         return this.msName;
     }
-    public String getRestCallInClassName() {
-        return this.restCallInClassName;
+
+    public String getConnectionInClassName() {
+        return this.connectionInClassName;
     }
 
     public String getParentMethod() {
@@ -68,12 +68,11 @@ public class RestCall {
     public void setMsName(String msName) {
         this.msName = msName;
     }
-    public void setHttpMethod(String httpMethod) {
-        this.httpMethod = httpMethod;
+
+    public void setConnectionInClassName(String className) {
+        this.connectionInClassName = className;
     }
-    public void setRestCallInClassName(String className) {
-        this.restCallInClassName = className;
-    }
+
     public void setParentMethod(String parentMethod) {
         this.parentMethod = parentMethod;
     }

@@ -1,17 +1,18 @@
 package com.oracle.svm.hosted.prophet.model;
 
-public class WebsocketConnection {
+public class WebsocketEndpoint {
 
+    private String uri;
+    private String msName;
+    private String wsHandler;
     private String parentMethod;
     private String returnType;
-    private String uri;
     private boolean isCollection;
     private String connectionInClassName;
-    private String msName;
     private WebsocketParameter param;
 
-    public WebsocketConnection(String parentMethod, String returnType, String uri, Boolean isCollection,
-                               String connectionInClassName, String msName, WebsocketParameter param) {
+    public WebsocketEndpoint(String parentMethod, String returnType, String uri, Boolean isCollection,
+                             String connectionInClassName, String msName, WebsocketParameter param, String wsHandler) {
 
         this.parentMethod = parentMethod;
         this.returnType = returnType;
@@ -20,6 +21,7 @@ public class WebsocketConnection {
         this.connectionInClassName = connectionInClassName;
         this.msName = msName;
         this.param = param;
+        this.wsHandler = wsHandler;
     }
 
     @Override
@@ -38,17 +40,16 @@ public class WebsocketConnection {
         return sb.toString();
     }
 
-    // Getter methods
-    public WebsocketParameter getParam(){
-        return this.param;
-    }
-
     public String getMsName() {
         return this.msName;
     }
 
-    public String getConnectionInClassName() {
-        return this.connectionInClassName;
+    public String getUri() {
+        return uri;
+    }
+
+    public String getWsHandler() {
+        return wsHandler;
     }
 
     public String getParentMethod() {
@@ -59,12 +60,16 @@ public class WebsocketConnection {
         return returnType;
     }
 
-    public String getUri() {
-        return uri;
-    }
-
     public boolean isCollection() {
         return isCollection;
+    }
+
+    public String getConnectionInClassName() {
+        return connectionInClassName;
+    }
+
+    public WebsocketParameter getParam() {
+        return param;
     }
 
     // Setter methods
@@ -72,23 +77,11 @@ public class WebsocketConnection {
         this.msName = msName;
     }
 
-    public void setConnectionInClassName(String className) {
-        this.connectionInClassName = className;
-    }
-
-    public void setParentMethod(String parentMethod) {
-        this.parentMethod = parentMethod;
-    }
-
-    public void setReturnType(String returnType) {
-        this.returnType = returnType;
+    public void setWsHandler(String wsHandler) {
+        this.wsHandler = wsHandler;
     }
 
     public void setUri(String uri) {
         this.uri = uri;
-    }
-
-    public void setCollection(boolean isCollection) {
-        this.isCollection = isCollection;
     }
 }
