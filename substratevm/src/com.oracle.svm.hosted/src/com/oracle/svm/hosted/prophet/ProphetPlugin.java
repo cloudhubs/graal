@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.prophet;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -7,12 +8,16 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import com.oracle.svm.hosted.prophet.model.WebsocketConnection;
+import com.oracle.svm.hosted.prophet.model.WebsocketEndpoint;
+import com.oracle.svm.hosted.prophet.model.WebsocketMessageType;
 import org.graalvm.compiler.options.Option;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -73,6 +78,9 @@ public class ProphetPlugin {
         @Option(help = "Where to store the restcall output")//
         public static final HostedOptionKey<String> ProphetRestCallOutputFile = new HostedOptionKey<>(null);
 
+        @Option(help = "Where to store the websocketConnections output")//
+        public static final HostedOptionKey<String> ProphetWebsocketConnectionsOutputFile = new HostedOptionKey<>(null);
+
         @Option(help = "Where to store the endpoint output")//
         public static final HostedOptionKey<String> ProphetEndpointOutputFile = new HostedOptionKey<>(null);
 
@@ -96,6 +104,7 @@ public class ProphetPlugin {
         Module module = plugin.doRun();
         RestDump restDump = new RestDump();
         restDump.writeOutRestCalls(module.getRestCalls(), Options.ProphetRestCallOutputFile.getValue());
+        restDump.writeOutWebsocketConnections(module.getWebsocketConnections(), Options.ProphetWebsocketConnectionsOutputFile.getValue());
         restDump.writeOutEndpoints(module.getEndpoints(), Options.ProphetEndpointOutputFile.getValue());
 
         dumpModule(module);
@@ -123,10 +132,26 @@ public class ProphetPlugin {
     private Module doRun() {
         URL enumeration = loader.getClassLoader().getResource("application.yml");
         if (enumeration != null) {
-            try {
-                this.propMap = new org.yaml.snakeyaml.Yaml().load(new FileReader(enumeration.getFile()));
+            try (BufferedReader reader = new BufferedReader(new FileReader(enumeration.getFile()))) {
+                StringBuilder yamlContent = new StringBuilder();
+                String line;
+
+                // Read until the first '---' separator or end of file
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().equals("---")) {
+                        break;
+                    }
+                    yamlContent.append(line).append("\n");
+                }
+
+                // Parse the YAML content before the separator
+                this.propMap = new org.yaml.snakeyaml.Yaml().load(yamlContent.toString());
+
             } catch (FileNotFoundException e) {
                 throw new RuntimeException(e);
+            } catch (IOException e) {
+                this.propMap = new HashMap<>();
+                e.printStackTrace();
             }
         }
 
@@ -134,9 +159,64 @@ public class ProphetPlugin {
         return processClasses(classes);
     }
 
+    private Set<WebsocketConnection> linkWebsocketEndpointsAndMessageTypes(Set<WebsocketEndpoint> websocketEndpointsList, Set<WebsocketMessageType> websocketMessageTypesList) {
+        Set<WebsocketConnection> websocketConnections = new HashSet<WebsocketConnection>();
+
+        for (WebsocketEndpoint endpoint : websocketEndpointsList) {
+            if (websocketMessageTypesList.isEmpty()) {
+                WebsocketConnection connection = new WebsocketConnection(
+                        endpoint.getParentMethod(),
+                        endpoint.getReturnType(),
+                        endpoint.getUri(),
+                        endpoint.isCollection(),
+                        endpoint.getConnectionInClassName(),
+                        endpoint.getMsName(),
+                        endpoint.getParam()
+                );
+                websocketConnections.add(connection);
+            } else {
+                boolean handlerMatched = false;
+                for (WebsocketMessageType messageType : websocketMessageTypesList) {
+                    String endpointHandler = endpoint.getWsHandler();
+                    String messageTypeHandler = messageType.getWsHandler();
+                    if (endpointHandler.equals(messageTypeHandler)) {
+                        WebsocketConnection connection = new WebsocketConnection(
+                                endpoint.getParentMethod() != null ? endpoint.getParentMethod() : messageType.getParentMethod(),
+                                messageType.getWsDataType(),
+                                endpoint.getUri(),
+                                endpoint.isCollection(),
+                                endpoint.getConnectionInClassName() != null ? endpoint.getConnectionInClassName() : messageType.getConnectionInClassName(),
+                                endpoint.getMsName() != null ? endpoint.getMsName() : messageType.getMsName(),
+                                endpoint.getParam() != null ? endpoint.getParam() : messageType.getParam()
+                        );
+                        websocketConnections.add(connection);
+                        handlerMatched = true;
+                        break;
+                    }
+                }
+                if (!handlerMatched) {
+                    WebsocketConnection connection = new WebsocketConnection(
+                            endpoint.getParentMethod(),
+                            endpoint.getReturnType(),
+                            endpoint.getUri(),
+                            endpoint.isCollection(),
+                            endpoint.getConnectionInClassName(),
+                            endpoint.getMsName(),
+                            endpoint.getParam()
+                    );
+                    websocketConnections.add(connection);
+                }
+            }
+        }
+        return websocketConnections;
+    }
+
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
         Set<RestCall> restCallList = new HashSet<RestCall>();
+        Set<WebsocketConnection> websocketConnectionsList = new HashSet<WebsocketConnection>();
+        Set<WebsocketEndpoint> websocketEndpointsList = new HashSet<WebsocketEndpoint>();
+        Set<WebsocketMessageType> websocketMessageTypesList = new HashSet<WebsocketMessageType>();
         Set<Endpoint> endpointList = new HashSet<Endpoint>();
 
         logger.info("Amount of classes = " + classes.size());
@@ -145,13 +225,21 @@ public class ProphetPlugin {
             Optional<Entity> ent = EntityExtraction.extractClassEntityCalls(clazz, metaAccess, bb);
             ent.ifPresent(entities::add);
             Set<RestCall> restCalls = RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            Set<WebsocketConnection> websocketConnection = WebsocketCallExtraction.extractClassWebsocketConnection(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            Set<WebsocketEndpoint> websocketEndpoints = WebsocketCallExtraction.extractClassWebsocketEndpoints(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            Set<WebsocketMessageType> websocketMessageTypes = WebsocketCallExtraction.extractClassWebsocketMessageTypes(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
             restCallList.addAll(restCalls);
+            websocketEndpointsList.addAll(websocketEndpoints);
+            websocketMessageTypesList.addAll(websocketMessageTypes);
+            websocketConnectionsList.addAll(websocketConnection);
             // ENDPOINT EXTRACTION HERE
             Set<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb, Options.ProphetMicroserviceName.getValue());
             endpointList.addAll(endpoints);
-
         }
-        return new Module(new Name(msName), entities, restCallList, endpointList);
+
+        websocketConnectionsList.addAll(linkWebsocketEndpointsAndMessageTypes(websocketEndpointsList, websocketMessageTypesList));
+
+        return new Module(new Name(msName), entities, restCallList, websocketConnectionsList, endpointList);
     }
 
     private List<Class<?>> filterRelevantClasses() {

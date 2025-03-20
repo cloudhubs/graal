@@ -50,6 +50,9 @@ public class RestCallExtraction {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         try {
             for (AnalysisMethod method : ((AnalysisMethod[]) analysisType.getDeclaredMethods())) {
+                if(method.isAbstract()){
+                    continue;
+                }
                 try {
                     // if (!method.getQualifiedName().contains("getExams")){
                     //     continue;
@@ -113,7 +116,6 @@ public class RestCallExtraction {
                                         }
                                         //MIGHT be URI or portion of URI
                                         else{
-
                                             DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
                                             URI += dsoc.getObject().toString();  
                                         } 
