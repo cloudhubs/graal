@@ -4,6 +4,7 @@ public class WebsocketConnection {
 
     private String parentMethod;
     private String returnType;
+    private String wsHandler;
     private String uri;
     private boolean isCollection;
     private String connectionInClassName;
@@ -11,7 +12,7 @@ public class WebsocketConnection {
     private WebsocketParameter param;
 
     public WebsocketConnection(String parentMethod, String returnType, String uri, Boolean isCollection,
-                               String connectionInClassName, String msName, WebsocketParameter param) {
+                               String connectionInClassName, String msName, WebsocketParameter param, String wsHandler) {
 
         this.msName = msName;
         this.connectionInClassName = connectionInClassName;
@@ -20,6 +21,7 @@ public class WebsocketConnection {
         this.returnType = returnType;
         this.param = param;
         this.isCollection = isCollection;
+        this.wsHandler = wsHandler;
     }
 
     @Override
@@ -87,5 +89,9 @@ public class WebsocketConnection {
 
     public void setCollection(boolean isCollection) {
         this.isCollection = isCollection;
+    }
+
+    public String getWsHandler() {
+        return wsHandler;
     }
 }

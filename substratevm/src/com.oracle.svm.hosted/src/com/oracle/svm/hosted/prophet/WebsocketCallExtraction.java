@@ -12,8 +12,6 @@ import com.oracle.svm.hosted.prophet.model.WebsocketEndpoint;
 import com.oracle.svm.hosted.prophet.model.WebsocketMessageType;
 import com.oracle.svm.hosted.prophet.model.WebsocketParameter;
 import jdk.vm.ci.meta.PrimitiveConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -24,20 +22,20 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class WebsocketCallExtraction {
 
@@ -169,6 +167,7 @@ public class WebsocketCallExtraction {
     public static Set<WebsocketConnection> extractClassWebsocketConnection(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap, String msName) {
         Set<WebsocketConnection> websocketConnections = new HashSet<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
+        String wsHandler = null;
 
         try {
             for (AnalysisMethod method : ((AnalysisMethod[]) analysisType.getDeclaredMethods())) {
@@ -193,52 +192,55 @@ public class WebsocketCallExtraction {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = (AnalysisMethod) invoke.getTargetMethod();
 
-                            if (targetMethod.getQualifiedName().contains("URI.create")) {
+                            // Briefly explained:
+                            // 1) Check if there are at least two arguments.
+                            // 2) If the second argument is AllocatedObjectNode, extract the type name from its stamp.
+                            if (targetMethod.getQualifiedName().contains("WebSocketStompClient.connect")) {
+                                CallTargetNode ct = invoke.callTarget();
+                                if (!ct.arguments().isEmpty()) {
+                                    uri = extractURI(ct, propMap);
+                                }
+                                if (ct.arguments().size() > 1) {
+                                    ValueNode secondArg = ct.arguments().get(2);
+                                    if (secondArg instanceof ParameterNode) {
+                                        ParameterNode paramNode = (ParameterNode) secondArg;
+                                        ObjectStamp stamp = (ObjectStamp) paramNode.uncheckedStamp();
+                                        wsHandler = stamp.type().toJavaName();
+                                    }
+                                }
+                            }
+
+                            // Detect WebSocketClient.doHandshake method
+                            if (targetMethod.getQualifiedName().contains("WebSocketClient.doHandshake")) {
+                                System.out.println("Detected WebSocketClient.doHandshake invocation.");
+
+                                // Extract handler from the invocation parameters
                                 CallTargetNode callTargetNode = invoke.callTarget();
                                 NodeInputList<ValueNode> arguments = callTargetNode.arguments();
 
-                                // Extract URI from its arguments
-
-                                // Extract URI parts (either constant or concatenated)
-                                for (ValueNode arg : arguments) {
-                                    if (arg instanceof ConstantNode) {
-                                        ConstantNode constantNode = (ConstantNode) arg;
-                                        if (constantNode.getValue() instanceof DirectSubstrateObjectConstant) {
-                                            DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant) constantNode.getValue();
-                                            uriBuilder.append(dsoc.getObject().toString());
-                                        }
-                                    } else if (arg instanceof Invoke) {
-                                        Invoke argInvoke = (Invoke) arg;
-                                        AnalysisMethod argTargetMethod = (AnalysisMethod) argInvoke.getTargetMethod();
-
-                                        // Handle string concatenation or StringBuilder.append
-                                        if (argTargetMethod.getQualifiedName().contains("StringConcatHelper.simpleConcat")
-                                                || argTargetMethod.getQualifiedName().contains("StringBuilder.append")) {
-
-                                            // Process the concatenation components
-                                            NodeInputList<ValueNode> concatArgs = argInvoke.callTarget().arguments();
-                                            for (ValueNode concatArg : concatArgs) {
-                                                if (concatArg instanceof ConstantNode) {
-                                                    ConstantNode concatConstant = (ConstantNode) concatArg;
-                                                    if (concatConstant.getValue() instanceof DirectSubstrateObjectConstant) {
-                                                        uriBuilder.append(((DirectSubstrateObjectConstant) concatConstant.getValue()).getObject().toString());
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                if (arguments.size() > 1) {
+                                    uri = extractURI(callTargetNode, propMap);
+                                    System.out.println("Extracted URI: " + URI);
                                 }
 
-                                uri = uriBuilder.toString();
-                                System.out.println("Extracted WebSocket URI: " + uri);
+                                for (ValueNode arg : arguments) {
+                                    // Check if the argument is an AllocatedObjectNode (potential handler)
+                                    if (arg instanceof AllocatedObjectNode) {
+                                        AllocatedObjectNode allocatedObject = (AllocatedObjectNode) arg;
+                                        ObjectStamp objectStamp = (ObjectStamp) allocatedObject.stamp(NodeView.DEFAULT);
+                                        wsHandler = objectStamp.type().toJavaName();
+                                        System.out.println("Extracted WebSocket Handler: " + wsHandler);
+                                    }
+                                }
                             }
+
                         }
                     }
 
                     // Store extracted data in WebsocketConnection class
                     if (uri != null || returnType != null) {
                         String parentMethod = cleanParentMethod(method.getQualifiedName());
-//                        websocketConnections.add(new WebsocketConnection(parentMethod, returnType, uri, isCollection, clazz.getCanonicalName(), msName, param));
+                        websocketConnections.add(new WebsocketConnection(parentMethod, returnType, uri, isCollection, clazz.getCanonicalName(), msName, param, wsHandler));
 
                         // Logging
                         System.out.println("PARENT METHOD = " + parentMethod);
@@ -294,28 +296,14 @@ public class WebsocketCallExtraction {
                                 wsHandler = extractionResult.handlerBuilder.toString();
                             }
 
-                            // Detect WebSocketClient.doHandshake method
-                            if (targetMethod.getQualifiedName().contains("WebSocketClient.doHandshake")) {
-                                System.out.println("Detected WebSocketClient.doHandshake invocation.");
-
-                                // Extract handler from the invocation parameters
-                                CallTargetNode callTargetNode = invoke.callTarget();
-                                NodeInputList<ValueNode> arguments = callTargetNode.arguments();
-
-                                if (arguments.size() > 1) {
-                                    uri = extractURI(callTargetNode, propMap);
-                                    System.out.println("Extracted URI: " + URI);
+                            // **New** check for StompEndpointRegistry.addEndpoint
+                            if (targetMethod.getQualifiedName().contains("StompEndpointRegistry.addEndpoint")) {
+                                // Extract the first parameter as a URI
+                                CallTargetNode ct = invoke.callTarget();
+                                if (!ct.arguments().isEmpty()) {
+                                    uri = extractURI(ct, propMap);
                                 }
-
-                                for (ValueNode arg : arguments) {
-                                    // Check if the argument is an AllocatedObjectNode (potential handler)
-                                    if (arg instanceof AllocatedObjectNode) {
-                                        AllocatedObjectNode allocatedObject = (AllocatedObjectNode) arg;
-                                        ObjectStamp objectStamp = (ObjectStamp) allocatedObject.stamp(NodeView.DEFAULT);
-                                        wsHandler = objectStamp.type().toJavaName();
-                                        System.out.println("Extracted WebSocket Handler: " + wsHandler);
-                                    }
-                                }
+                                wsHandler = "StompEndpointHandler";
                             }
                         }
                     }
@@ -366,6 +354,16 @@ public class WebsocketCallExtraction {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = (AnalysisMethod) invoke.getTargetMethod();
 
+                            if (targetMethod.getQualifiedName().contains("StompSessionHandlerAdapter.getPayloadType")) {
+                                // Retrieve the return type
+                                AnalysisType retType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
+                                if (retType != null) {
+                                    wsDataType = retType.getName();
+                                    // Extract the handler name from the declaring class
+                                    wsHandler = targetMethod.getDeclaringClass().getName();
+                                }
+                            }
+
                             if (targetMethod.getQualifiedName().contains("AbstractWebSocketMessage.getPayload")) {
                                 System.out.println("Detected WebSocket getPayload() call");
 
@@ -400,7 +398,6 @@ public class WebsocketCallExtraction {
                                     }
                                 }
                             }
-
                         }
                     }
 
@@ -473,34 +470,7 @@ public class WebsocketCallExtraction {
                     param.setParamCount(param.getParamCount() + paramCount);
                     param.setIsBody(true);
                 }
-                CommitAllocationNode caNode = (CommitAllocationNode) bNodePredecessor.predecessor();
-
-
-                // for (Node caNodeInput : caNode.inputs()){
-                //     System.out.println("caNode input = " + caNodeInput);
-                //     if (caNodeInput.toString().matches(".*VirtualInstance\\([0-9]*\\) HttpEntity")){
-                //         System.out.println("match found!");
-                //         System.out.println("between parentheses " + extractVirtualInstance(caNodeInput.toString()));
-                //         //extract that number
-                //     }
-                // }
-
-                // int httpEntityValsCount = ((CommitAllocationNode)bNodePredecessor.predecessor()).getValues().size();
-                // param.setParamCount(param.getParamCount() +  httpEntityValsCount - 1);
-                // param.setIsBody(true);
             }
-            // for (Node inNode : bNodePredecessor.inputs()){
-            //     System.out.println("\t\t\t\tinNode inputs = " + inNode);
-            // if (inNode instanceof Invoke){
-            //     param = handleIfInvokeInRESTParam(param, ((ValueNode)inNode));
-            // }
-            // }
-            // System.out.println("bNodePredecessor predecessor = " + ((CommitAllocationNode)bNodePredecessor.predecessor()).getValues());
-            // for (ValueNode vn : ((CommitAllocationNode)bNodePredecessor.predecessor()).getValues()){
-            //     System.out.println("vn constant node = " + (ConstantNode)vn + ", value " + ((ConstantNode)vn).getValue());
-            //  }
-            // System.out.println("HttpEntity params");
-            // param.setParamCount(param.getParamCount() + ((CommitAllocationNode)bNodePredecessor.predecessor()).getValues() - 1); //-1 because one of those is the headers
 
             param = setIfBodyAndType(param, ((Invoke) predecessor.predecessor()).callTarget());
         } else {
@@ -559,11 +529,38 @@ public class WebsocketCallExtraction {
             else if (arg instanceof ConstantNode){
                 ConstantNode cn = (ConstantNode)arg;
                 //PrimitiveConstants can not be converted to DirectSubstrateObjectConstant
-                if (!(cn.getValue() instanceof PrimitiveConstant)){
-                    DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant)cn.getValue();
-                    uriPortion = uriPortion + dsoc.getObject().toString();
+                if (cn.asJavaConstant() != null && cn.asJavaConstant().isNull()) {
+                    // Skip, it's null
+                } else if (!(cn.getValue() instanceof PrimitiveConstant)) {
+                    DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant) cn.getValue();
+                    if (dsoc.getObject() != null) {
+                        uriPortion += dsoc.getObject().toString();
+                    }
                 }
+            }
+            else if (arg instanceof AllocatedObjectNode) {
+                // Handle allocated objects, which may contain constant values
+                AllocatedObjectNode allocatedObject = (AllocatedObjectNode) arg;
+                for (Node input : allocatedObject.inputs()) {
+                    if (input instanceof CommitAllocationNode) {
+                        CommitAllocationNode varr = (CommitAllocationNode) input;
+                        for (ValueNode element : varr.getValues()) {
 
+                            if (element instanceof ConstantNode) {
+                                ConstantNode cn = (ConstantNode) element;
+                                // PrimitiveConstants cannot be converted to DirectSubstrateObjectConstant
+                                if (cn.asJavaConstant() != null && cn.asJavaConstant().isNull()) {
+                                    // Skip, it's null
+                                } else if (!(cn.getValue() instanceof PrimitiveConstant)) {
+                                    DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant) cn.getValue();
+                                    if (dsoc.getObject() != null) {
+                                        uriPortion += dsoc.getObject().toString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             else if (arg instanceof Invoke){
                 // System.out.println("arg = " + arg + " && is an instance of invoke");

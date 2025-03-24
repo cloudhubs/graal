@@ -9,13 +9,15 @@ public class Module {
     private Set<Entity> entities;
     private Set<RestCall> restCalls;
     private Set<WebsocketConnection> websocketConnections;
+    private Set<WebsocketEndpoint> websocketEndpoints;
     private Set<Endpoint> endpoints;
 
-    public Module(Name name, Set<Entity> entities, Set<RestCall> restCalls, Set<WebsocketConnection> websocketConnections, Set<Endpoint> endpoints) {
+    public Module(Name name, Set<Entity> entities, Set<RestCall> restCalls, Set<WebsocketConnection> websocketConnections, Set<WebsocketEndpoint> websocketEndpoints, Set<Endpoint> endpoints) {
         this.name = name;
         this.entities = entities;
         this.restCalls = restCalls;
         this.websocketConnections = websocketConnections;
+        this.websocketEndpoints = websocketEndpoints;
         this.endpoints = endpoints;
     }
 
@@ -28,6 +30,8 @@ public class Module {
                 restCalls.size() +
                 ",websocketConnections=" +
                 websocketConnections.size() +
+                ",websocketEndpoints=" +
+                websocketEndpoints.size() +
                 ",endpoints=" +
                 endpoints.size() +
                 ')';
@@ -37,7 +41,7 @@ public class Module {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("MODULE NAME = ").append(name).append("\n").append("\nENTITIES = \n").append(setToString(entities))
-                .append("\nREST_CALLS = \n").append(setToString(restCalls)).append("\nWEBSOCKET_CONNECTIONS = \n").append(setToString(websocketConnections)).append("\nENDPOINTS = \n").append(setToString(endpoints))
+                .append("\nREST_CALLS = \n").append(setToString(restCalls)).append("\nWEBSOCKET_CONNECTIONS = \n").append(setToString(websocketConnections)).append("\nWEBSOCKET_ENDPOINTS = \n").append(setToString(websocketEndpoints)).append("\nENDPOINTS = \n").append(setToString(endpoints))
                 .append('\n');
         return sb.toString();
     }
@@ -75,6 +79,10 @@ public class Module {
         return websocketConnections;
     }
 
+    public Set<WebsocketEndpoint> getWebsocketEndpoints() {
+        return websocketEndpoints;
+    }
+
     public Set<Endpoint> getEndpoints() {
         return endpoints;
     }
@@ -83,8 +91,13 @@ public class Module {
     public void setRestCalls(Set<RestCall> restCalls) {
         this.restCalls = restCalls;
     }
+
     public void setWebsocketConnections(Set<WebsocketConnection> websocketConnections) {
         this.websocketConnections = websocketConnections;
+    }
+
+    public void setWebsocketEndpoints(Set<WebsocketEndpoint> websocketEndpoints) {
+        this.websocketEndpoints = websocketEndpoints;
     }
 
     public void setEndpoints(Set<Endpoint> endpoints) {

@@ -32,9 +32,6 @@ public class WebsocketEndpoint {
                 .append(parentMethod != null ? parentMethod : "").append(",")
                 .append(uri != null ? uri : "").append(",")
                 .append(returnType != null ? returnType : "").append(",")
-                .append(param != null ? param.getIsPath() : "").append(",")
-                .append(param != null ? param.getIsBody() : "").append(",")
-                .append(param != null ? param.getParamType() : "").append(",")
                 .append(param != null ? param.getParamCount() : "").append(",")
                 .append(isCollection);
         return sb.toString();

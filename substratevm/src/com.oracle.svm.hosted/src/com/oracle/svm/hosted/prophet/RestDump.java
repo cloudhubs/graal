@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.prophet;
 import com.oracle.svm.hosted.prophet.model.Endpoint;
 import com.oracle.svm.hosted.prophet.model.RestCall;
 import com.oracle.svm.hosted.prophet.model.WebsocketConnection;
+import com.oracle.svm.hosted.prophet.model.WebsocketEndpoint;
 
 import java.io.IOException;
 import java.util.Set;
@@ -40,6 +41,19 @@ public class RestDump {
         }
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
             for (WebsocketConnection wc : websocketConnections) {
+                writer.write(wc.toString() + "\n");
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    public void writeOutWebsocketEndpoints(Set<WebsocketEndpoint> websocketEndpoints, String outputFile) {
+        if (outputFile == null) {
+            throw new RuntimeException("ProphetWebsocketEndpointOutputFile option was not provided");
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
+            for (WebsocketEndpoint wc : websocketEndpoints) {
                 writer.write(wc.toString() + "\n");
             }
         } catch (IOException ex) {
