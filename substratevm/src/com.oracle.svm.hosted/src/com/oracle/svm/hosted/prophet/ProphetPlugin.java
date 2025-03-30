@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import com.oracle.svm.hosted.prophet.model.GraphQLCall;
+import com.oracle.svm.hosted.prophet.model.GraphQLEndpoint;
 import com.oracle.svm.hosted.prophet.model.WebsocketConnection;
 import com.oracle.svm.hosted.prophet.model.WebsocketEndpoint;
 import com.oracle.svm.hosted.prophet.model.WebsocketMessageType;
@@ -84,6 +86,12 @@ public class ProphetPlugin {
         @Option(help = "Where to store the websocketEndpoints output")//
         public static final HostedOptionKey<String> ProphetWebsocketEndpointsOutputFile = new HostedOptionKey<>(null);
 
+        @Option(help = "Where to store the graphqlCalls output")//
+        public static final HostedOptionKey<String> ProphetGraphQLCallOutputFile = new HostedOptionKey<>(null);
+
+        @Option(help = "Where to store the graphqlEndpoints output")//
+        public static final HostedOptionKey<String> ProphetGraphQLEndpointOutputFile = new HostedOptionKey<>(null);
+
         @Option(help = "Where to store the endpoint output")//
         public static final HostedOptionKey<String> ProphetEndpointOutputFile = new HostedOptionKey<>(null);
 
@@ -110,6 +118,9 @@ public class ProphetPlugin {
         restDump.writeOutWebsocketConnections(module.getWebsocketConnections(), Options.ProphetWebsocketConnectionsOutputFile.getValue());
         restDump.writeOutEndpoints(module.getEndpoints(), Options.ProphetEndpointOutputFile.getValue());
         restDump.writeOutWebsocketEndpoints(module.getWebsocketEndpoints(), Options.ProphetWebsocketEndpointsOutputFile.getValue());
+        restDump.writeOutGraphQLCalls(module.getGraphQLCalls(), Options.ProphetGraphQLCallOutputFile.getValue());
+        restDump.writeOutGraphQLEndpoints(module.getGraphQLEndpoints(), Options.ProphetGraphQLEndpointOutputFile.getValue());
+
 
         dumpModule(module);
         logger.info("Final summary: " + module.shortSummary());
@@ -221,10 +232,12 @@ public class ProphetPlugin {
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
         Set<RestCall> restCallList = new HashSet<RestCall>();
+        Set<GraphQLCall> graphQLCallList = new HashSet<GraphQLCall>();
         Set<WebsocketConnection> websocketConnectionsList = new HashSet<WebsocketConnection>();
         Set<WebsocketEndpoint> websocketEndpointsList = new HashSet<WebsocketEndpoint>();
         Set<WebsocketMessageType> websocketMessageTypesList = new HashSet<WebsocketMessageType>();
         Set<Endpoint> endpointList = new HashSet<Endpoint>();
+        Set<GraphQLEndpoint> graphQLEndpointList = new HashSet<GraphQLEndpoint>();
 
         logger.info("Amount of classes = " + classes.size());
         for (Class<?> clazz : classes) {
@@ -232,21 +245,26 @@ public class ProphetPlugin {
             Optional<Entity> ent = EntityExtraction.extractClassEntityCalls(clazz, metaAccess, bb);
             ent.ifPresent(entities::add);
             Set<RestCall> restCalls = RestCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            restCallList.addAll(restCalls);
+            Set<GraphQLCall> GraphQLCalls = GraphQLCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            graphQLCallList.addAll(GraphQLCalls);
             Set<WebsocketConnection> websocketConnection = WebsocketCallExtraction.extractClassWebsocketConnection(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
             Set<WebsocketEndpoint> websocketEndpoints = WebsocketCallExtraction.extractClassWebsocketEndpoints(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
             Set<WebsocketMessageType> websocketMessageTypes = WebsocketCallExtraction.extractClassWebsocketMessageTypes(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
-            restCallList.addAll(restCalls);
+
             websocketEndpointsList.addAll(websocketEndpoints);
             websocketMessageTypesList.addAll(websocketMessageTypes);
             websocketConnectionsList.addAll(websocketConnection);
             // ENDPOINT EXTRACTION HERE
             Set<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb, Options.ProphetMicroserviceName.getValue());
+            Set<GraphQLEndpoint> graphQLEndpoints = GraphQLEndpointExtraction.extractEndpoints(clazz, metaAccess, bb, Options.ProphetMicroserviceName.getValue());
+            graphQLEndpointList.addAll(graphQLEndpoints);
             endpointList.addAll(endpoints);
         }
 
         websocketEndpointsList.addAll(linkWebsocketEndpointsAndMessageTypes(websocketEndpointsList, websocketMessageTypesList));
 
-        return new Module(new Name(msName), entities, restCallList, websocketConnectionsList, websocketEndpointsList, endpointList);
+        return new Module(new Name(msName), entities, restCallList, websocketConnectionsList, websocketEndpointsList, endpointList, graphQLCallList, graphQLEndpointList);
     }
 
     private List<Class<?>> filterRelevantClasses() {

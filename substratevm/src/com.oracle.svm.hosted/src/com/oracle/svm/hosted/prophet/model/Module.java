@@ -11,14 +11,18 @@ public class Module {
     private Set<WebsocketConnection> websocketConnections;
     private Set<WebsocketEndpoint> websocketEndpoints;
     private Set<Endpoint> endpoints;
+    private Set<GraphQLCall> graphQLCalls;
+    private Set<GraphQLEndpoint> graphQLEndpoints;
 
-    public Module(Name name, Set<Entity> entities, Set<RestCall> restCalls, Set<WebsocketConnection> websocketConnections, Set<WebsocketEndpoint> websocketEndpoints, Set<Endpoint> endpoints) {
+    public Module(Name name, Set<Entity> entities, Set<RestCall> restCalls, Set<WebsocketConnection> websocketConnections, Set<WebsocketEndpoint> websocketEndpoints, Set<Endpoint> endpoints, Set<GraphQLCall> graphQLCalls, Set<GraphQLEndpoint> graphQLEndpoints) {
         this.name = name;
         this.entities = entities;
         this.restCalls = restCalls;
         this.websocketConnections = websocketConnections;
         this.websocketEndpoints = websocketEndpoints;
         this.endpoints = endpoints;
+        this.graphQLCalls = graphQLCalls;
+        this.graphQLEndpoints = graphQLEndpoints;
     }
 
     public String shortSummary() {
@@ -34,6 +38,10 @@ public class Module {
                 websocketEndpoints.size() +
                 ",endpoints=" +
                 endpoints.size() +
+                ",graphQLCalls=" +
+                graphQLCalls.size() +
+                ",graphQLEndpoints=" +
+                graphQLEndpoints.size() +
                 ')';
     }
 
@@ -41,8 +49,7 @@ public class Module {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("MODULE NAME = ").append(name).append("\n").append("\nENTITIES = \n").append(setToString(entities))
-                .append("\nREST_CALLS = \n").append(setToString(restCalls)).append("\nWEBSOCKET_CONNECTIONS = \n").append(setToString(websocketConnections)).append("\nWEBSOCKET_ENDPOINTS = \n").append(setToString(websocketEndpoints)).append("\nENDPOINTS = \n").append(setToString(endpoints))
-                .append('\n');
+                .append("\nREST_CALLS = \n").append(setToString(restCalls)).append("\nWEBSOCKET_CONNECTIONS = \n").append(setToString(websocketConnections)).append("\nWEBSOCKET_ENDPOINTS = \n").append(setToString(websocketEndpoints)).append("\nENDPOINTS = \n").append(setToString(endpoints)).append("\nGRAPHQL_CALLS = \n").append(setToString(graphQLCalls)).append("\nGRAPHQL_ENDPOINTS = \n").append(setToString(graphQLEndpoints)).append('\n');
         return sb.toString();
     }
 
@@ -85,6 +92,14 @@ public class Module {
 
     public Set<Endpoint> getEndpoints() {
         return endpoints;
+    }
+
+    public Set<GraphQLCall> getGraphQLCalls() {
+        return graphQLCalls;
+    }
+
+    public Set<GraphQLEndpoint> getGraphQLEndpoints() {
+        return graphQLEndpoints;
     }
 
     // Setter methods

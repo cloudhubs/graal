@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.prophet;
 import com.oracle.svm.hosted.prophet.model.Endpoint;
+import com.oracle.svm.hosted.prophet.model.GraphQLCall;
+import com.oracle.svm.hosted.prophet.model.GraphQLEndpoint;
 import com.oracle.svm.hosted.prophet.model.RestCall;
 import com.oracle.svm.hosted.prophet.model.WebsocketConnection;
 import com.oracle.svm.hosted.prophet.model.WebsocketEndpoint;
@@ -70,6 +72,32 @@ public class RestDump {
                 writer.write(ep.toString() + "\n");
             }
         }catch(IOException ex){
+            ex.printStackTrace();
+        }
+    }
+
+    public void writeOutGraphQLEndpoints(Set<GraphQLEndpoint> endpoints, String outputFile){
+        if (outputFile == null){
+            throw new RuntimeException("ProphetGraphQLEndpointOutputFile option was not provided");
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))){
+            for (GraphQLEndpoint ep : endpoints){
+                writer.write(ep.toString() + "\n");
+            }
+        }catch(IOException ex){
+            ex.printStackTrace();
+        }
+    }
+
+    public void writeOutGraphQLCalls(Set<GraphQLCall> graphQLCalls, String outputFile) {
+        if (outputFile == null) {
+            throw new RuntimeException("ProphetGraphQLCallOutputFile option was not provided");
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
+            for (GraphQLCall rc : graphQLCalls) {
+                writer.write(rc.toString() + "\n");
+            }
+        } catch (IOException ex) {
             ex.printStackTrace();
         }
     }
