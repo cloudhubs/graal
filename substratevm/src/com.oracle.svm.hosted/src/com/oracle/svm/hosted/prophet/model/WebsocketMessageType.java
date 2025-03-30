@@ -6,7 +6,6 @@ public class WebsocketMessageType {
     private String msName;
     private String wsHandler;
     private String parentMethod;
-    private String returnType;
     private boolean isCollection;
     private String connectionInClassName;
     private WebsocketParameter param;
@@ -51,10 +50,6 @@ public class WebsocketMessageType {
         return parentMethod;
     }
 
-    public String getReturnType() {
-        return returnType;
-    }
-
     public boolean isCollection() {
         return isCollection;
     }
@@ -82,10 +77,6 @@ public class WebsocketMessageType {
 
     public void setParentMethod(String parentMethod) {
         this.parentMethod = parentMethod;
-    }
-
-    public void setReturnType(String returnType) {
-        this.returnType = returnType;
     }
 
     public void setCollection(boolean isCollection) {

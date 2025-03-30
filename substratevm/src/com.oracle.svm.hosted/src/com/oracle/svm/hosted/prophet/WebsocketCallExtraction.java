@@ -24,6 +24,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -338,6 +339,7 @@ public class WebsocketCallExtraction {
                 if (method.isAbstract()) {
                     continue;
                 }
+
                 try {
                     StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
 
@@ -347,22 +349,47 @@ public class WebsocketCallExtraction {
                     StringBuilder uriBuilder = new StringBuilder();
                     WebsocketParameter param = null;
 
+                    if (method.getQualifiedName().contains(".getPayloadType")) {
+
+                        Class<?> parentClass = clazz.getSuperclass();
+
+                        if (clazz.getName().equals("org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter") || (parentClass != null && parentClass.getName().equals("org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter"))) {
+                            for (Node node : decodedGraph.getNodes()) {
+
+                                if (node instanceof ReturnNode) {
+                                    ReturnNode returnNode = (ReturnNode) node;
+                                    ValueNode returnVal = returnNode.result();
+                                    if (returnVal instanceof ConstantNode) {
+                                        ConstantNode constantNode = (ConstantNode) returnVal;
+                                        Object payloadObject = constantNode.getValue();
+
+                                        if (payloadObject instanceof DirectSubstrateObjectConstant) {
+                                            DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant) payloadObject;
+                                            Object actualMessage = dsoc.getObject();
+
+                                            if (actualMessage instanceof com.oracle.svm.core.hub.DynamicHub) {
+                                                Class<?> actualClass = extractHostedClass(actualMessage);
+                                                wsDataType = actualClass.getSimpleName();
+                                                System.out.println("Actual message type: " + wsDataType);
+                                            }
+                                        }
+                                    }
+
+                                }
+                            }
+                        }
+
+                        System.out.println("Detected StompSessionHandler.getPayloadType call");
+                    }
+
+
+
                     // Loop through all nodes in the graph
                     for (Node node : decodedGraph.getNodes()) {
                         // Detect URI.create invocations
                         if (node instanceof Invoke) {
                             Invoke invoke = (Invoke) node;
                             AnalysisMethod targetMethod = (AnalysisMethod) invoke.getTargetMethod();
-
-                            if (targetMethod.getQualifiedName().contains("StompSessionHandlerAdapter.getPayloadType")) {
-                                // Retrieve the return type
-                                AnalysisType retType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
-                                if (retType != null) {
-                                    wsDataType = retType.getName();
-                                    // Extract the handler name from the declaring class
-                                    wsHandler = targetMethod.getDeclaringClass().getName();
-                                }
-                            }
 
                             if (targetMethod.getQualifiedName().contains("AbstractWebSocketMessage.getPayload")) {
                                 System.out.println("Detected WebSocket getPayload() call");
@@ -424,7 +451,60 @@ public class WebsocketCallExtraction {
     }
 
 
-    private static WebsocketParameter setIfBodyAndType(WebsocketParameter param, CallTargetNode node) {
+    public static Set<String> extractClassStompMessageTypes(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap, String msName, String handlerClass) {
+        Set<String> websocketMessageTypes = new HashSet<>();
+        AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
+
+        try {
+            for (AnalysisMethod method : ((AnalysisMethod[]) analysisType.getDeclaredMethods())) {
+                if (method.isAbstract()) {
+                    continue;
+                }
+
+                try {
+                    StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
+
+                    String substring = handlerClass + ".getPayloadType";
+
+                    if (method.getQualifiedName().contains(substring)) {
+
+
+                        for (Node node : decodedGraph.getNodes()) {
+
+                            if (node instanceof ReturnNode) {
+                                ReturnNode returnNode = (ReturnNode) node;
+                                ValueNode returnVal = returnNode.result();
+                                if (returnVal instanceof ConstantNode) {
+                                    ConstantNode constantNode = (ConstantNode) returnVal;
+                                    Object payloadObject = constantNode.getValue();
+
+                                    if (payloadObject instanceof DirectSubstrateObjectConstant) {
+                                        DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant) payloadObject;
+                                        Object actualMessage = dsoc.getObject();
+
+                                        if (actualMessage instanceof com.oracle.svm.core.hub.DynamicHub) {
+                                            Class<?> actualClass = extractHostedClass(actualMessage);
+                                            websocketMessageTypes.add(actualClass.getSimpleName());
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                } catch (Exception | LinkageError ex) {
+                    ex.printStackTrace();
+                }
+            }
+        } catch (Exception | LinkageError ex) {
+            ex.printStackTrace();
+        }
+        return websocketMessageTypes;
+    }
+
+
+
+                    private static WebsocketParameter setIfBodyAndType(WebsocketParameter param, CallTargetNode node) {
         for (ValueNode arg : node.arguments()) {
             if (arg instanceof PiNode) {
                 for (Node inputNode : ((PiNode) arg).inputs()) {

@@ -78,6 +78,10 @@ public class WebsocketEndpoint {
         this.wsHandler = wsHandler;
     }
 
+    public void setReturnType(String returnType) {
+        this.returnType = returnType;
+    }
+
     public void setUri(String uri) {
         this.uri = uri;
     }

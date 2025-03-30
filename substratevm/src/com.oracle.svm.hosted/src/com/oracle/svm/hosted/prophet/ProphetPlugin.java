@@ -33,6 +33,8 @@ import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
 import com.oracle.svm.hosted.prophet.model.RestCall;
 
+import static com.oracle.svm.hosted.prophet.WebsocketCallExtraction.extractClassStompMessageTypes;
+
 public class ProphetPlugin {
 
     private final ImageClassLoader loader;
@@ -175,58 +177,47 @@ public class ProphetPlugin {
     }
 
     private Set<WebsocketEndpoint> linkWebsocketEndpointsAndMessageTypes(Set<WebsocketEndpoint> websocketEndpointsList, Set<WebsocketMessageType> websocketMessageTypesList) {
-        Set<WebsocketEndpoint> websocketEndpoints = new HashSet<WebsocketEndpoint>();
 
         for (WebsocketEndpoint endpoint : websocketEndpointsList) {
-            if (websocketMessageTypesList.isEmpty()) {
-                WebsocketEndpoint connection = new WebsocketEndpoint(
-                        endpoint.getParentMethod(),
-                        endpoint.getReturnType(),
-                        endpoint.getUri(),
-                        endpoint.isCollection(),
-                        endpoint.getConnectionInClassName(),
-                        endpoint.getMsName(),
-                        endpoint.getParam(),
-                        endpoint.getWsHandler()
-                );
-                websocketEndpoints.add(connection);
-            } else {
+            if (!websocketMessageTypesList.isEmpty()) {
+
                 boolean handlerMatched = false;
+                List<String> returnTypes = new ArrayList<>();
                 for (WebsocketMessageType messageType : websocketMessageTypesList) {
-                    String endpointHandler = endpoint.getWsHandler();
-                    String messageTypeHandler = messageType.getWsHandler();
-                    if (endpointHandler.equals(messageTypeHandler)) {
-                        WebsocketEndpoint connection = new WebsocketEndpoint(
-                                endpoint.getParentMethod() != null ? endpoint.getParentMethod() : messageType.getParentMethod(),
-                                messageType.getWsDataType(),
-                                endpoint.getUri(),
-                                endpoint.isCollection(),
-                                endpoint.getConnectionInClassName() != null ? endpoint.getConnectionInClassName() : messageType.getConnectionInClassName(),
-                                endpoint.getMsName() != null ? endpoint.getMsName() : messageType.getMsName(),
-                                endpoint.getParam() != null ? endpoint.getParam() : messageType.getParam(),
-                                endpoint.getWsHandler()
-                        );
-                        websocketEndpoints.add(connection);
+                    returnTypes.add(messageType.getWsDataType());
+                    if (endpoint.getWsHandler().equals(messageType.getWsHandler())) {
+                        endpoint.setReturnType(messageType.getWsDataType());
                         handlerMatched = true;
                         break;
                     }
                 }
                 if (!handlerMatched) {
-                    WebsocketEndpoint connection = new WebsocketEndpoint(
-                            endpoint.getParentMethod(),
-                            endpoint.getReturnType(),
-                            endpoint.getUri(),
-                            endpoint.isCollection(),
-                            endpoint.getConnectionInClassName(),
-                            endpoint.getMsName(),
-                            endpoint.getParam(),
-                            endpoint.getWsHandler()
-                    );
-                    websocketEndpoints.add(connection);
+                   endpoint.setReturnType(returnTypes.toString());
                 }
             }
         }
-        return websocketEndpoints;
+        return websocketEndpointsList;
+    }
+
+    private Set<WebsocketConnection> linkWebsocketConnectionsAndMessageTypes(Set<WebsocketConnection> websocketConnectionsList, Set<WebsocketMessageType> websocketMessageTypesList) {
+        for (WebsocketConnection connection : websocketConnectionsList) {
+            if (!websocketMessageTypesList.isEmpty()) {
+                boolean handlerMatched = false;
+                List<String> returnTypes = new ArrayList<>();
+                for (WebsocketMessageType messageType : websocketMessageTypesList) {
+                    returnTypes.add(messageType.getWsDataType());
+                    if (connection.getWsHandler().equals(messageType.getWsHandler())) {
+                        connection.setReturnType(messageType.getWsDataType());
+                        handlerMatched = true;
+                        break;
+                    }
+                }
+                if (!handlerMatched) {
+                    connection.setReturnType(returnTypes.toString());
+                }
+            }
+        }
+        return websocketConnectionsList;
     }
 
     private Module processClasses(List<Class<?>> classes) {
@@ -255,6 +246,7 @@ public class ProphetPlugin {
             websocketEndpointsList.addAll(websocketEndpoints);
             websocketMessageTypesList.addAll(websocketMessageTypes);
             websocketConnectionsList.addAll(websocketConnection);
+
             // ENDPOINT EXTRACTION HERE
             Set<Endpoint> endpoints = EndpointExtraction.extractEndpoints(clazz, metaAccess, bb, Options.ProphetMicroserviceName.getValue());
             Set<GraphQLEndpoint> graphQLEndpoints = GraphQLEndpointExtraction.extractEndpoints(clazz, metaAccess, bb, Options.ProphetMicroserviceName.getValue());
@@ -262,7 +254,9 @@ public class ProphetPlugin {
             endpointList.addAll(endpoints);
         }
 
-        websocketEndpointsList.addAll(linkWebsocketEndpointsAndMessageTypes(websocketEndpointsList, websocketMessageTypesList));
+        websocketEndpointsList = linkWebsocketEndpointsAndMessageTypes(websocketEndpointsList, websocketMessageTypesList);
+        websocketConnectionsList = linkWebsocketConnectionsAndMessageTypes(websocketConnectionsList, websocketMessageTypesList);
+
 
         return new Module(new Name(msName), entities, restCallList, websocketConnectionsList, websocketEndpointsList, endpointList, graphQLCallList, graphQLEndpointList);
     }
