@@ -19,12 +19,35 @@ import java.util.Set;
 
 public class GraphQLEndpointExtraction {
 
+    /**
+     * Constants and a set for identifying GraphQL controller annotations.
+     * These annotations are used to determine if a method is a GraphQL endpoint.
+     * - QUERY_MAPPING: Represents the annotation for GraphQL query methods.
+     * - MUTATION_MAPPING: Represents the annotation for GraphQL mutation methods.
+     * - controllerAnnotationNames: A set containing the simple names of the supported annotations.
+     */
     private final static String QUERY_MAPPING = "org.springframework.graphql.data.method.annotation.QueryMapping";
     private final static String MUTATION_MAPPING = "org.springframework.graphql.data.method.annotation.MutationMapping";
-
-    // annotations for controller to get endpoints
     private static final Set<String> controllerAnnotationNames = new HashSet<>(Arrays.asList("QueryMapping", "MutationMapping"));
 
+    /**
+     * Extracts GraphQL endpoints from a given class by analyzing its methods and annotations.
+     * This method identifies methods annotated with GraphQL-specific annotations (e.g., `QueryMapping`, `MutationMapping`)
+     * and collects their metadata, such as the GraphQL method type, parent method, return type, and parameters.
+     *
+     * Key Features:
+     * - Iterates through all declared methods of the class.
+     * - Checks for supported GraphQL annotations to determine if a method is an endpoint.
+     * - Extracts method metadata, including parameter annotations, return type, and path.
+     * - Handles collection return types and nested annotations.
+     * - Returns a set of `GraphQLEndpoint` objects representing the extracted endpoints.
+     *
+     * @param clazz The class to analyze for GraphQL endpoints.
+     * @param metaAccess Provides access to meta-information about the class.
+     * @param bb An `Inflation` object for additional analysis context.
+     * @param msName The name of the microservice or module being analyzed.
+     * @return A set of `GraphQLEndpoint` objects representing the extracted endpoints.
+     */
     public static Set<GraphQLEndpoint> extractEndpoints(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, String msName) {
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
         Set<GraphQLEndpoint> endpoints = new HashSet<GraphQLEndpoint>();
@@ -32,25 +55,20 @@ public class GraphQLEndpointExtraction {
 
             for (AnalysisMethod method : ((AnalysisMethod[]) analysisType.getDeclaredMethods())) {
                 try {
-                    // What I will need to extract: String httpMethod, String parentMethod, String
-                    // arguments, String returnType
                     Annotation[] annotations = method.getWrapped().getAnnotations();
                     for (Annotation annotation : annotations) {
 
                         ArrayList<String> parameterAnnotationsList = new ArrayList<>();
-                        String httpMethod = null, parentMethod = null, returnTypeResult = null, path = "";
+                        String graphqlMethod = null, parentMethod = null, returnTypeResult = null, path = "";
                         boolean returnTypeCollection = false, isEndpoint = false;
                         if (controllerAnnotationNames.contains(annotation.annotationType().getSimpleName())) {
                             isEndpoint = true;
-                            // Code to get the parentMethod attribute:
-                            // following the rad-source format for the parentMethod JSON need to
-                            // parse before the first parenthesis
                             parentMethod = method.getQualifiedName().substring(0, method.getQualifiedName().indexOf("("));
-                            path = method.getName(); // Save parentMethod as path
+                            path = method.getName();
                             if (annotation.annotationType().getName().startsWith(QUERY_MAPPING)) {
-                                httpMethod = "QUERY";
+                                graphqlMethod = "QUERY";
                             } else if (annotation.annotationType().getName().startsWith(MUTATION_MAPPING)) {
-                                httpMethod = "MUTATION";
+                                graphqlMethod = "MUTATION";
                             }
 
                             parameterAnnotationsList = extractArguments(method);
@@ -61,11 +79,10 @@ public class GraphQLEndpointExtraction {
                             } else {
                                 returnTypeCollection = isCollection(returnTypeResult);
                             }
-                            // Special case for request mapping
                         }
 
                         if (isEndpoint) {
-                            endpoints.add(new GraphQLEndpoint(httpMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName(), msName));
+                            endpoints.add(new GraphQLEndpoint(graphqlMethod, parentMethod, parameterAnnotationsList, returnTypeResult, path, returnTypeCollection, clazz.getCanonicalName(), msName));
                         }
                     }
 
@@ -80,20 +97,34 @@ public class GraphQLEndpointExtraction {
         return endpoints;
     }
 
+    /**
+     * Determines if the given return type represents a collection.
+     * This method checks for array types (indicated by "[L") or generic collection types
+     * (indicated by the presence of angle brackets "<...>").
+     *
+     * @param returnType The return type as a string.
+     * @return `true` if the return type is a collection, otherwise `false`.
+     */
     private static boolean isCollection(String returnType) {
         if (returnType == null || returnType.equals("null")) {
-            return false;
+            return false; // Not a collection if null or "null"
         }
-        // graal api indicates collections in return type with "class [L" OR
+        // Check for array or generic collection types
         return returnType.startsWith("[L") || returnType.matches(".*[<].*[>]");
     }
 
+
     /**
-     * Method extracts and cleans the return type value of a controller method (based on a
-     * collection or object/primitive data type)
+     * Extracts the return type of a given method as a string.
+     * This method retrieves the generic return type of the provided `AnalysisMethod`
+     * and processes it to return a simplified representation.
      *
-     * @param method an AnalysisMethod
-     * @return the method's return type as a string value
+     * Key Features:
+     * - Handles return types that are classes by removing the "class " prefix.
+     * - Returns the full string representation of the return type for other cases.
+     *
+     * @param method The `AnalysisMethod` whose return type is to be extracted.
+     * @return A string representing the return type of the method.
      */
     public static String extractReturnType(AnalysisMethod method) {
         Method javaMethod = (Method) method.getJavaMethod();
@@ -107,17 +138,30 @@ public class GraphQLEndpointExtraction {
 
     }
 
+    /**
+     * Extracts the arguments of a given method along with their annotations, types, and names.
+     * This method processes the parameters of the provided `AnalysisMethod` and constructs
+     * a list of strings representing each parameter in the format:
+     *
+     * `@AnnotationName ParameterType ParameterName`
+     *
+     * Key Features:
+     * - Iterates through all parameters of the method.
+     * - Collects annotations for each parameter and appends them to the result.
+     * - Extracts the simple type name and parameter name for clarity.
+     * - Returns a list of formatted strings representing the method's parameters.
+     *
+     * @param method The `AnalysisMethod` whose parameters are to be extracted.
+     * @return A list of strings representing the parameters with annotations, types, and names.
+     */
     public static ArrayList<String> extractArguments(AnalysisMethod method) {
 
-        // Code to get the argument attribute:
-        // Example: "arguments": "[@PathVariable Integer id]",
         ArrayList<String> parameterAnnotationsList = new ArrayList<>();
         Parameter[] params = method.getParameters();
         Annotation[][] annotations1 = method.getParameterAnnotations();
 
         for (int i = 0; i < params.length; i++) {
             Annotation[] annotations2 = annotations1[i];
-            // Parameter Annotations (e.g., @PathVariable) are optional, thus can be empty (null)
             String parameterAnnotation = "";
             for (int j = 0; j < annotations2.length; j++) {
                 Annotation annotation3 = annotations2[j];

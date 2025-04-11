@@ -33,8 +33,6 @@ import com.oracle.svm.hosted.prophet.model.Module;
 import com.oracle.svm.hosted.prophet.model.Name;
 import com.oracle.svm.hosted.prophet.model.RestCall;
 
-import static com.oracle.svm.hosted.prophet.WebsocketCallExtraction.extractClassStompMessageTypes;
-
 public class ProphetPlugin {
 
     private final ImageClassLoader loader;
@@ -113,6 +111,15 @@ public class ProphetPlugin {
         logger.info("Analyzing all classes in the " + basePackage + " package.");
         logger.info("Creating module " + msName);
 
+        /**
+         * Initializes the ProphetPlugin and processes the classes to extract metadata.
+         * This block performs the following:
+         * - Creates a new instance of `ProphetPlugin` with the provided parameters.
+         * - Executes the `doRun` method to process the classes and generate a `Module` object.
+         * - Uses `RestDump` to write out the extracted data (REST calls, WebSocket connections,
+         *   WebSocket endpoints, GraphQL calls, GraphQL endpoints, and general endpoints)
+         *   to their respective output files as specified in the options.
+         */
         var plugin = new ProphetPlugin(loader, aUniverse, metaAccess, bb, basePackage, msName);
         Module module = plugin.doRun();
         RestDump restDump = new RestDump();
@@ -176,50 +183,106 @@ public class ProphetPlugin {
         return processClasses(classes);
     }
 
+    /**
+     * Links WebSocket endpoints with their corresponding message types.
+     * This method iterates through a list of WebSocket endpoints and attempts to match
+     * each endpoint's handler with the handler of a WebSocket message type. If a match is found,
+     * the endpoint's return type is set to the message type's data type. If no match is found,
+     * the endpoint's return type is set to a list of all available message types.
+     *
+     * @param websocketEndpointsList A set of WebSocket endpoints to process.
+     * @param websocketMessageTypesList A set of WebSocket message types to match against.
+     * @return The updated set of WebSocket endpoints with linked return types.
+     */
     private Set<WebsocketEndpoint> linkWebsocketEndpointsAndMessageTypes(Set<WebsocketEndpoint> websocketEndpointsList, Set<WebsocketMessageType> websocketMessageTypesList) {
 
+        // Iterate through each WebSocket endpoint
         for (WebsocketEndpoint endpoint : websocketEndpointsList) {
+            // Check if there are any message types to process
             if (!websocketMessageTypesList.isEmpty()) {
 
-                boolean handlerMatched = false;
-                List<String> returnTypes = new ArrayList<>();
+                boolean handlerMatched = false; // Flag to track if a handler match is found
+                List<String> returnTypes = new ArrayList<>(); // List to store all message type data types
+
+                // Iterate through each WebSocket message type
                 for (WebsocketMessageType messageType : websocketMessageTypesList) {
-                    returnTypes.add(messageType.getWsDataType());
+                    returnTypes.add(messageType.getWsDataType()); // Collect the data type of the message type
+
+                    // Check if the endpoint's handler matches the message type's handler
                     if (endpoint.getWsHandler().equals(messageType.getWsHandler())) {
-                        endpoint.setReturnType(messageType.getWsDataType());
-                        handlerMatched = true;
-                        break;
+                        endpoint.setReturnType(messageType.getWsDataType()); // Set the return type to the matched data type
+                        handlerMatched = true; // Mark that a match was found
+                        break; // Exit the loop as a match is found
                     }
                 }
+
+                // If no handler match was found, set the return type to the list of all available data types
                 if (!handlerMatched) {
-                   endpoint.setReturnType(returnTypes.toString());
+                    endpoint.setReturnType(returnTypes.toString());
                 }
             }
         }
+        // Return the updated list of WebSocket endpoints
         return websocketEndpointsList;
     }
 
+    /**
+     * Links WebSocket connections with their corresponding message types.
+     * This method iterates through a list of WebSocket connections and attempts to match
+     * each connection's handler with the handler of a WebSocket message type. If a match is found,
+     * the connection's return type is set to the message type's data type. If no match is found,
+     * the connection's return type is set to a list of all available message types.
+     *
+     * @param websocketConnectionsList A set of WebSocket connections to process.
+     * @param websocketMessageTypesList A set of WebSocket message types to match against.
+     * @return The updated set of WebSocket connections with linked return types.
+     */
     private Set<WebsocketConnection> linkWebsocketConnectionsAndMessageTypes(Set<WebsocketConnection> websocketConnectionsList, Set<WebsocketMessageType> websocketMessageTypesList) {
+        // Iterate through each WebSocket connection
         for (WebsocketConnection connection : websocketConnectionsList) {
+            // Check if there are any message types to process
             if (!websocketMessageTypesList.isEmpty()) {
-                boolean handlerMatched = false;
-                List<String> returnTypes = new ArrayList<>();
+                boolean handlerMatched = false; // Flag to track if a handler match is found
+                List<String> returnTypes = new ArrayList<>(); // List to store all message type data types
+
+                // Iterate through each WebSocket message type
                 for (WebsocketMessageType messageType : websocketMessageTypesList) {
-                    returnTypes.add(messageType.getWsDataType());
+                    returnTypes.add(messageType.getWsDataType()); // Collect the data type of the message type
+
+                    // Check if the connection's handler matches the message type's handler
                     if (connection.getWsHandler().equals(messageType.getWsHandler())) {
-                        connection.setReturnType(messageType.getWsDataType());
-                        handlerMatched = true;
-                        break;
+                        connection.setReturnType(messageType.getWsDataType()); // Set the return type to the matched data type
+                        handlerMatched = true; // Mark that a match was found
+                        break; // Exit the loop as a match is found
                     }
                 }
+
+                // If no handler match was found, set the return type to the list of all available data types
                 if (!handlerMatched) {
                     connection.setReturnType(returnTypes.toString());
                 }
             }
         }
+        // Return the updated list of WebSocket connections
         return websocketConnectionsList;
     }
 
+    /**
+     * Processes a list of classes to extract various types of metadata and relationships.
+     * This method iterates through the provided classes and performs the following:
+     * - Extracts entities, REST calls, GraphQL calls, WebSocket connections, WebSocket endpoints,
+     *   WebSocket message types, and general endpoints.
+     * - Links WebSocket endpoints and connections with their corresponding message types.
+     * - Aggregates all extracted data into a `Module` object for further processing or output.
+     *
+     * Key Features:
+     * - Handles multiple types of metadata extraction for each class.
+     * - Ensures WebSocket endpoints and connections are properly linked to their message types.
+     * - Logs the number of classes being processed for debugging purposes.
+     *
+     * @param classes A list of classes to analyze and process.
+     * @return A `Module` object containing all extracted metadata and relationships.
+     */
     private Module processClasses(List<Class<?>> classes) {
         var entities = new HashSet<Entity>();
         Set<RestCall> restCallList = new HashSet<RestCall>();
@@ -239,9 +302,9 @@ public class ProphetPlugin {
             restCallList.addAll(restCalls);
             Set<GraphQLCall> GraphQLCalls = GraphQLCallExtraction.extractClassRestCalls(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
             graphQLCallList.addAll(GraphQLCalls);
-            Set<WebsocketConnection> websocketConnection = WebsocketCallExtraction.extractClassWebsocketConnection(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
-            Set<WebsocketEndpoint> websocketEndpoints = WebsocketCallExtraction.extractClassWebsocketEndpoints(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
-            Set<WebsocketMessageType> websocketMessageTypes = WebsocketCallExtraction.extractClassWebsocketMessageTypes(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            Set<WebsocketConnection> websocketConnection = WebsocketConnectionExtraction.extractClassWebsocketConnection(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            Set<WebsocketEndpoint> websocketEndpoints = WebsocketConnectionExtraction.extractClassWebsocketEndpoints(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
+            Set<WebsocketMessageType> websocketMessageTypes = WebsocketConnectionExtraction.extractClassWebsocketMessageTypes(clazz, metaAccess, bb, this.propMap, Options.ProphetMicroserviceName.getValue());
 
             websocketEndpointsList.addAll(websocketEndpoints);
             websocketMessageTypesList.addAll(websocketMessageTypes);

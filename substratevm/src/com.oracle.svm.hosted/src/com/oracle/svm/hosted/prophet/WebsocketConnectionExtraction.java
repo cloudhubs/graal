@@ -30,7 +30,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
-import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -38,7 +37,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class WebsocketCallExtraction {
+public class WebsocketConnectionExtraction {
 
     /*
        NOTE:
@@ -49,6 +48,17 @@ public class WebsocketCallExtraction {
 
     static String URI = "";
 
+    /**
+     * Extracts the hosted Java class from a given DynamicHub object.
+     * This method uses reflection to access the private field `hostedJavaClass`
+     * within the provided DynamicHub instance, making it accessible and retrieving
+     * its value as a `Class<?>` object.
+     *
+     * @param dynamicHub The DynamicHub object containing the hosted Java class.
+     * @return The hosted Java class as a `Class<?>` object.
+     * @throws NoSuchFieldException If the `hostedJavaClass` field is not found.
+     * @throws IllegalAccessException If the field cannot be accessed.
+     */
     public static Class<?> extractHostedClass(Object dynamicHub) throws NoSuchFieldException, IllegalAccessException {
         // The hosted class is typically stored in a field of the DynamicHub
         Field hostedClassField = dynamicHub.getClass().getDeclaredField("hostedJavaClass");
@@ -60,7 +70,11 @@ public class WebsocketCallExtraction {
         return (Class<?>) hostedClassField.get(dynamicHub);
     }
 
-    // Helper class to hold both URI and handler data
+    /**
+     * Helper class to encapsulate both URI and handler data during extraction.
+     * This class provides a convenient way to store and manage the URI and handler
+     * information as `StringBuilder` objects.
+     */
     private static class ExtractionResult {
         StringBuilder uriBuilder;
         StringBuilder handlerBuilder;
@@ -71,6 +85,17 @@ public class WebsocketCallExtraction {
         }
     }
 
+    /**
+     * Recursively traverses the graph of nodes to extract URI and handler information.
+     * This method identifies specific node types, such as `InvokeWithExceptionNode`,
+     * to process concatenation components for URIs and handler instantiation details.
+     *
+     * @param currentNode The current node being analyzed.
+     * @param visitedNodes A set of nodes already visited to prevent infinite loops.
+     * @param uriBuilder A `StringBuilder` to accumulate the extracted URI components.
+     * @param handlerBuilder A `StringBuilder` to accumulate the extracted handler details.
+     * @return An `ExtractionResult` containing the concatenated URI and handler information.
+     */
     private static ExtractionResult logPrecedingNodesRecursiveURIandHandler(
             Node currentNode, Set<Node> visitedNodes, StringBuilder uriBuilder, StringBuilder handlerBuilder) {
         if (visitedNodes.contains(currentNode)) {
@@ -119,6 +144,21 @@ public class WebsocketCallExtraction {
         return new ExtractionResult(uriBuilder, handlerBuilder);
     }
 
+    /**
+     * Recursively traverses the graph of nodes to extract URI and handler information.
+     * This method identifies specific node types, such as `InvokeWithExceptionNode`,
+     * to process concatenation components for URIs and handler instantiation details.
+     *
+     * The method uses a `Set` to track visited nodes and avoid infinite loops during
+     * the traversal. It appends extracted URI components to the `uriBuilder` and
+     * handler details to the `handlerBuilder`.
+     *
+     * @param currentNode The current node being analyzed.
+     * @param visitedNodes A set of nodes already visited to prevent infinite loops.
+     * @param uriBuilder A `StringBuilder` to accumulate the extracted URI components.
+     * @param handlerBuilder A `StringBuilder` to accumulate the extracted handler details.
+     * @return A `StringBuilder` containing the concatenated URI components.
+     */
     private static StringBuilder logPrecedingNodesRecursive(Node currentNode, Set<Node> visitedNodes, StringBuilder uriBuilder, StringBuilder handlerBuilder) {
         if (visitedNodes.contains(currentNode)) {
             return uriBuilder;
@@ -165,6 +205,23 @@ public class WebsocketCallExtraction {
         return uriBuilder;
     }
 
+    /**
+     * Extracts WebSocket connection details from a given class by analyzing its methods and their
+     * associated graphs. This method identifies specific WebSocket-related invocations, such as
+     * `WebSocketStompClient.connect` and `WebSocketClient.doHandshake`, to extract URI and handler
+     * information.
+     *
+     * The method uses GraalVM's analysis tools to decode the method graphs and traverse their nodes
+     * to detect relevant invocations. Extracted data is stored in `WebsocketConnection` objects and
+     * returned as a set.
+     *
+     * @param clazz The class to analyze for WebSocket connection details.
+     * @param metaAccess The meta-access interface for type and method analysis.
+     * @param bb The inflation object used for decoding graphs.
+     * @param propMap A map of properties for resolving dynamic values (e.g., URIs).
+     * @param msName The name of the microservice or module being analyzed.
+     * @return A set of `WebsocketConnection` objects containing extracted connection details.
+     */
     public static Set<WebsocketConnection> extractClassWebsocketConnection(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap, String msName) {
         Set<WebsocketConnection> websocketConnections = new HashSet<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
@@ -259,6 +316,23 @@ public class WebsocketCallExtraction {
         return websocketConnections;
     }
 
+    /**
+     * Extracts WebSocket endpoint details from a given class by analyzing its methods and their
+     * associated graphs. This method identifies specific WebSocket-related invocations, such as
+     * `WebSocketHandlerRegistry.addHandler` and `StompEndpointRegistry.addEndpoint`, to extract
+     * URI and handler information.
+     *
+     * The method uses GraalVM's analysis tools to decode the method graphs and traverse their nodes
+     * to detect relevant invocations. Extracted data is stored in `WebsocketEndpoint` objects and
+     * returned as a set.
+     *
+     * @param clazz The class to analyze for WebSocket endpoint details.
+     * @param metaAccess The meta-access interface for type and method analysis.
+     * @param bb The inflation object used for decoding graphs.
+     * @param propMap A map of properties for resolving dynamic values (e.g., URIs).
+     * @param msName The name of the microservice or module being analyzed.
+     * @return A set of `WebsocketEndpoint` objects containing extracted endpoint details.
+     */
     public static Set<WebsocketEndpoint> extractClassWebsocketEndpoints(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap, String msName) {
         Set<WebsocketEndpoint> websocketEndpoints = new HashSet<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
@@ -330,6 +404,30 @@ public class WebsocketCallExtraction {
         return websocketEndpoints;
     }
 
+    /**
+     * Extracts WebSocket message type details from a given class by analyzing its methods and their
+     * associated graphs. This method identifies specific WebSocket-related invocations, such as
+     * `AbstractWebSocketMessage.getPayload` and `ObjectMapper.readValue`, to extract payload type
+     * information.
+     *
+     * The method uses GraalVM's analysis tools to decode the method graphs and traverse their nodes
+     * to detect relevant invocations. Extracted data is stored in `WebsocketMessageType` objects and
+     * returned as a set.
+     *
+     * Key Features:
+     * - Detects `.getPayloadType` calls in `StompSessionHandlerAdapter` or its subclasses to extract
+     *   the payload type.
+     * - Identifies `AbstractWebSocketMessage.getPayload` and `ObjectMapper.readValue` calls to extract
+     *   the payload type (e.g., `ChatMessage`).
+     * - Uses reflection to extract hosted class information from `DynamicHub` objects.
+     *
+     * @param clazz The class to analyze for WebSocket message type details.
+     * @param metaAccess The meta-access interface for type and method analysis.
+     * @param bb The inflation object used for decoding graphs.
+     * @param propMap A map of properties for resolving dynamic values (e.g., URIs).
+     * @param msName The name of the microservice or module being analyzed.
+     * @return A set of `WebsocketMessageType` objects containing extracted message type details.
+     */
     public static Set<WebsocketMessageType> extractClassWebsocketMessageTypes(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap, String msName) {
         Set<WebsocketMessageType> websocketMessageTypes = new HashSet<>();
         AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
@@ -381,7 +479,6 @@ public class WebsocketCallExtraction {
 
                         System.out.println("Detected StompSessionHandler.getPayloadType call");
                     }
-
 
 
                     // Loop through all nodes in the graph
@@ -450,61 +547,21 @@ public class WebsocketCallExtraction {
         return websocketMessageTypes;
     }
 
-
-    public static Set<String> extractClassStompMessageTypes(Class<?> clazz, AnalysisMetaAccess metaAccess, Inflation bb, Map<String, Object> propMap, String msName, String handlerClass) {
-        Set<String> websocketMessageTypes = new HashSet<>();
-        AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
-
-        try {
-            for (AnalysisMethod method : ((AnalysisMethod[]) analysisType.getDeclaredMethods())) {
-                if (method.isAbstract()) {
-                    continue;
-                }
-
-                try {
-                    StructuredGraph decodedGraph = ReachabilityAnalysisMethod.getDecodedGraph(bb, method);
-
-                    String substring = handlerClass + ".getPayloadType";
-
-                    if (method.getQualifiedName().contains(substring)) {
-
-
-                        for (Node node : decodedGraph.getNodes()) {
-
-                            if (node instanceof ReturnNode) {
-                                ReturnNode returnNode = (ReturnNode) node;
-                                ValueNode returnVal = returnNode.result();
-                                if (returnVal instanceof ConstantNode) {
-                                    ConstantNode constantNode = (ConstantNode) returnVal;
-                                    Object payloadObject = constantNode.getValue();
-
-                                    if (payloadObject instanceof DirectSubstrateObjectConstant) {
-                                        DirectSubstrateObjectConstant dsoc = (DirectSubstrateObjectConstant) payloadObject;
-                                        Object actualMessage = dsoc.getObject();
-
-                                        if (actualMessage instanceof com.oracle.svm.core.hub.DynamicHub) {
-                                            Class<?> actualClass = extractHostedClass(actualMessage);
-                                            websocketMessageTypes.add(actualClass.getSimpleName());
-                                        }
-                                    }
-                                }
-
-                            }
-                        }
-                    }
-                } catch (Exception | LinkageError ex) {
-                    ex.printStackTrace();
-                }
-            }
-        } catch (Exception | LinkageError ex) {
-            ex.printStackTrace();
-        }
-        return websocketMessageTypes;
-    }
-
-
-
-                    private static WebsocketParameter setIfBodyAndType(WebsocketParameter param, CallTargetNode node) {
+    /**
+     * Recursively processes the arguments of a `CallTargetNode` to determine if a WebSocket parameter
+     * has a body and its type. This method traverses through `PiNode` and `Invoke` nodes to extract
+     * relevant information and updates the provided `WebsocketParameter` object.
+     *
+     * Key Features:
+     * - Handles `PiNode` arguments by iterating over their inputs and recursively processing them.
+     * - Handles `Invoke` arguments by delegating to the `handleIfInvokeInWebsocketParam` method.
+     * - Returns the updated `WebsocketParameter` object after processing all arguments.
+     *
+     * @param param The `WebsocketParameter` object to update with extracted details.
+     * @param node The `CallTargetNode` whose arguments are being analyzed.
+     * @return The updated `WebsocketParameter` object.
+     */
+    private static WebsocketParameter setIfBodyAndType(WebsocketParameter param, CallTargetNode node) {
         for (ValueNode arg : node.arguments()) {
             if (arg instanceof PiNode) {
                 for (Node inputNode : ((PiNode) arg).inputs()) {
@@ -536,7 +593,7 @@ public class WebsocketCallExtraction {
 //             System.out.println("\t\t\tpredecessor of BeginNode = " + predecessor.predecessor());
             Node bNodePredecessor = predecessor.predecessor();
 
-            if (((Invoke) predecessor.predecessor()).callTarget().targetMethod().toString().contains(WebsocketCallExtraction.WEBSOCKET_TEXT_MESSAGE)) {
+            if (((Invoke) predecessor.predecessor()).callTarget().targetMethod().toString().contains(WebsocketConnectionExtraction.WEBSOCKET_TEXT_MESSAGE)) {
 //                 System.out.println("callTarget = " + ((Invoke)predecessor.predecessor()).callTarget());
                 int inputAmnt = 0;
                 for (Node ctIn : ((Invoke) predecessor.predecessor()).callTarget().inputs()) {
@@ -559,7 +616,24 @@ public class WebsocketCallExtraction {
         return param;
     }
 
-    private static String extractURI(CallTargetNode node, Map<String, Object> propMap){
+    /**
+     * Extracts a URI portion from a `CallTargetNode` by analyzing its arguments and traversing
+     * through various node types such as `LoadFieldNode`, `PiNode`, `ConstantNode`, and others.
+     * The method resolves dynamic values using a property map (`propMap`) and recursively processes
+     * nested nodes to construct the full URI.
+     *
+     * Key Features:
+     * - Handles `LoadFieldNode` to extract annotations and resolve values using `propMap`.
+     * - Processes `PiNode` and its inputs recursively to extract URI components.
+     * - Handles `ConstantNode` and `AllocatedObjectNode` to extract constant values.
+     * - Recursively processes `Invoke` nodes to extract nested URI portions.
+     * - Skips null or unsupported node types gracefully.
+     *
+     * @param node The `CallTargetNode` to analyze for URI extraction.
+     * @param propMap A map of properties for resolving dynamic values (e.g., placeholders in URIs).
+     * @return A string representing the extracted URI portion.
+     */
+    private static String extractURI(CallTargetNode node, Map<String, Object> propMap) {
         // System.out.println("NODE CALL TARGET: " + node);
         // System.out.println("NODE CALL TARGET ARGS: " + node.arguments());
         String uriPortion = "";
@@ -570,9 +644,9 @@ public class WebsocketCallExtraction {
          * else if node is a loadfieldnode, go over annotations and get 'value' annotation
          * get value based off prop map
          */
-        for (ValueNode arg : node.arguments()){
+        for (ValueNode arg : node.arguments()) {
             NodeIterable<Node> inputsList = arg.inputs();
-            if (arg instanceof LoadFieldNode){
+            if (arg instanceof LoadFieldNode) {
                 // System.out.println("arg is a LOAD_FIELD_NODE, arg = " + arg);
                 LoadFieldNode loadfieldNode = (LoadFieldNode) arg;
                 AnalysisField field = (AnalysisField) loadfieldNode.field();
@@ -581,33 +655,31 @@ public class WebsocketCallExtraction {
                     if (annotation.annotationType().getName().contains("Value")) {
                         // System.out.println("Load field with value annotation");
                         // System.out.println("methods = " + annotation.annotationType().getMethods());
-                        try{
+                        try {
                             Method valueMethod = annotation.annotationType().getMethod("value");
                             valueMethod.setAccessible(true);
                             String res = "";
-                            if (propMap != null){
-                                res = tryResolve(((String)valueMethod.invoke(annotation)), propMap);
+                            if (propMap != null) {
+                                res = tryResolve(((String) valueMethod.invoke(annotation)), propMap);
                             }
                             uriPortion = uriPortion + res;
-                        }catch(Exception ex){
+                        } catch (Exception ex) {
                             System.err.println("ERROR = " + ex);
                         }
                     }
                 }
 
-            }
-            else if (arg instanceof PiNode){
+            } else if (arg instanceof PiNode) {
                 // System.out.println(arg + " is a PiNode");
                 // System.out.println("pi node inputs: " + ((PiNode)arg).inputs());
-                for (Node inputNode : ((PiNode)arg).inputs()){
-                    if (inputNode instanceof Invoke){
+                for (Node inputNode : ((PiNode) arg).inputs()) {
+                    if (inputNode instanceof Invoke) {
                         // System.out.println(inputNode + " is Invoke");
-                        uriPortion = uriPortion + extractURI(((Invoke)inputNode).callTarget(), propMap);
+                        uriPortion = uriPortion + extractURI(((Invoke) inputNode).callTarget(), propMap);
                     }
                 }
-            }
-            else if (arg instanceof ConstantNode){
-                ConstantNode cn = (ConstantNode)arg;
+            } else if (arg instanceof ConstantNode) {
+                ConstantNode cn = (ConstantNode) arg;
                 //PrimitiveConstants can not be converted to DirectSubstrateObjectConstant
                 if (cn.asJavaConstant() != null && cn.asJavaConstant().isNull()) {
                     // Skip, it's null
@@ -617,8 +689,7 @@ public class WebsocketCallExtraction {
                         uriPortion += dsoc.getObject().toString();
                     }
                 }
-            }
-            else if (arg instanceof AllocatedObjectNode) {
+            } else if (arg instanceof AllocatedObjectNode) {
                 // Handle allocated objects, which may contain constant values
                 AllocatedObjectNode allocatedObject = (AllocatedObjectNode) arg;
                 for (Node input : allocatedObject.inputs()) {
@@ -641,15 +712,14 @@ public class WebsocketCallExtraction {
                         }
                     }
                 }
-            }
-            else if (arg instanceof Invoke){
+            } else if (arg instanceof Invoke) {
                 // System.out.println("arg = " + arg + " && is an instance of invoke");
-                uriPortion = uriPortion + extractURI(((Invoke)arg).callTarget(), propMap);
-            }
-            else{
-                for (Node n : inputsList){
-                    if (n instanceof Invoke){;
-                        uriPortion = uriPortion + extractURI(((Invoke)n).callTarget(), propMap);
+                uriPortion = uriPortion + extractURI(((Invoke) arg).callTarget(), propMap);
+            } else {
+                for (Node n : inputsList) {
+                    if (n instanceof Invoke) {
+                        ;
+                        uriPortion = uriPortion + extractURI(((Invoke) n).callTarget(), propMap);
                     }
                 }
             }
