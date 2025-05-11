@@ -1,3 +1,9 @@
+/**
+ * Authors:
+ * - Original Authors
+ * - Vsevolod Pokhvalenko
+ */
+
 package com.oracle.svm.hosted.prophet;
 
 import java.io.BufferedReader;

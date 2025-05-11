@@ -1,3 +1,8 @@
+/**
+ * Authors:
+ * - Vsevolod Pokhvalenko
+ */
+
 package com.oracle.svm.hosted.prophet;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;

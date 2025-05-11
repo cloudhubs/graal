@@ -1,3 +1,9 @@
+/**
+ * Authors:
+ * - Original Authors
+ * - Vsevolod Pokhvalenko
+ */
+
 package com.oracle.svm.hosted.prophet.model;
 
 import java.util.Set;
